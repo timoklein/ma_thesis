@@ -1,0 +1,83 @@
+%% Creator: Inkscape 1.1 (ce6663b3b7, 2021-05-25), www.inkscape.org
+%% PDF/EPS/PS + LaTeX output extension by Johan Engelen, 2010
+%% Accompanies image file 'clamped_density_maze.pdf' (pdf, eps, ps)
+%%
+%% To include the image in your LaTeX document, write
+%%   \input{<filename>.pdf_tex}
+%%  instead of
+%%   \includegraphics{<filename>.pdf}
+%% To scale the image, write
+%%   \def\svgwidth{<desired width>}
+%%   \input{<filename>.pdf_tex}
+%%  instead of
+%%   \includegraphics[width=<desired width>]{<filename>.pdf}
+%%
+%% Images with a different path to the parent latex file can
+%% be accessed with the `import' package (which may need to be
+%% installed) using
+%%   \usepackage{import}
+%% in the preamble, and then including the image with
+%%   \import{<path to file>}{<filename>.pdf_tex}
+%% Alternatively, one can specify
+%%   \graphicspath{{<path to file>/}}
+%% 
+%% For more information, please see info/svg-inkscape on CTAN:
+%%   http://tug.ctan.org/tex-archive/info/svg-inkscape
+%%
+\begingroup%
+  \makeatletter%
+  \providecommand\color[2][]{%
+    \errmessage{(Inkscape) Color is used for the text in Inkscape, but the package 'color.sty' is not loaded}%
+    \renewcommand\color[2][]{}%
+  }%
+  \providecommand\transparent[1]{%
+    \errmessage{(Inkscape) Transparency is used (non-zero) for the text in Inkscape, but the package 'transparent.sty' is not loaded}%
+    \renewcommand\transparent[1]{}%
+  }%
+  \providecommand\rotatebox[2]{#2}%
+  \newcommand*\fsize{\dimexpr\f@size pt\relax}%
+  \newcommand*\lineheight[1]{\fontsize{\fsize}{#1\fsize}\selectfont}%
+  \ifx\svgwidth\undefined%
+    \setlength{\unitlength}{524.99996719bp}%
+    \ifx\svgscale\undefined%
+      \relax%
+    \else%
+      \setlength{\unitlength}{\unitlength * \real{\svgscale}}%
+    \fi%
+  \else%
+    \setlength{\unitlength}{\svgwidth}%
+  \fi%
+  \global\let\svgwidth\undefined%
+  \global\let\svgscale\undefined%
+  \makeatother%
+  \begin{picture}(1,0.71428571)%
+    \lineheight{1}%
+    \setlength\tabcolsep{0pt}%
+    \put(0,0){\includegraphics[width=\unitlength,page=1]{clamped_density_maze.pdf}}%
+    \put(0.1303274,0.09228573){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}−5\end{tabular}}}}%
+    \put(0.18197026,0.09228573){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}−4\end{tabular}}}}%
+    \put(0.23359883,0.09228573){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}−3\end{tabular}}}}%
+    \put(0.28524169,0.09228573){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}−2\end{tabular}}}}%
+    \put(0.33688454,0.09228573){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}−1\end{tabular}}}}%
+    \put(0.39351867,0.09228573){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}0\end{tabular}}}}%
+    \put(0.44516158,0.09228573){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}1\end{tabular}}}}%
+    \put(0.49679015,0.09228573){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}2\end{tabular}}}}%
+    \put(0.54843298,0.09228573){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}3\end{tabular}}}}%
+    \put(0.60006155,0.09228573){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}4\end{tabular}}}}%
+    \put(0.65170443,0.09228573){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}5\end{tabular}}}}%
+    \put(0.08288337,0.12350286){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}−5\end{tabular}}}}%
+    \put(0.08288337,0.15396){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}−4\end{tabular}}}}%
+    \put(0.08288337,0.18440288){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}−3\end{tabular}}}}%
+    \put(0.08288337,0.21484571){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}−2\end{tabular}}}}%
+    \put(0.08288337,0.24528859){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}−1\end{tabular}}}}%
+    \put(0.09989453,0.27573145){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}0\end{tabular}}}}%
+    \put(0.09989453,0.30618859){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}1\end{tabular}}}}%
+    \put(0.09989453,0.33663145){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}2\end{tabular}}}}%
+    \put(0.09989453,0.36707428){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}3\end{tabular}}}}%
+    \put(0.09989453,0.39751716){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}4\end{tabular}}}}%
+    \put(0.09989453,0.42796002){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}5\end{tabular}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=2]{clamped_density_maze.pdf}}%
+    \put(0.27931741,0.05256251){\color[rgb]{0.14117647,0.14117647,0.14117647}\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}Longitudinal change in m/s\end{tabular}}}}%
+    \put(0.05443752,0.18612676){\color[rgb]{0.14117647,0.14117647,0.14117647}\rotatebox{90}{\makebox(0,0)[lt]{\lineheight{1.25}\smash{\begin{tabular}[t]{l}Lateral change in m/s\end{tabular}}}}}%
+  \end{picture}%
+\endgroup%

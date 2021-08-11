@@ -1,0 +1,32 @@
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}[thick,scale=0.8, every node/.style={transform shape}]
+% MDP objects
+\node (agent) [object]{\large \textbf{Agent}};
+\node (environment) [object, below=3cm of agent]{\large \textbf{Environment}};
+
+% Text
+\node (action) [below right=1cm and 5.5cm of agent]{\large \textbf{Action} $a_t$};
+\node (state) [below left=1cm and 5.5cm of agent]{\large \textbf{State} $s_t$};
+\node (reward) [below left=1cm and 1cm of agent]{\large \textbf{Reward} $r_t$};
+
+% Empty nodes to get the arrows around corners
+\node (a1) [right=5cm of agent]{};
+\node (a2) [right=5cm of environment]{};
+
+\node (d1) [above left=0.5cm and 2cm of environment]{};
+\node (d2) [below left=0.5cm and 2cm of environment]{};
+
+\node (t1) [above left=0.6cm and 0.5cm of environment.west]{\large $r_{t+1}$};
+\node (t2) [below left=0.6cm and 0.5cm of environment.west]{\large $s_{t+1}$};
+
+
+% Lines
+\draw[thickarrow] (agent) -- (a1.center) -- (a2.center) -- (environment);
+%  ([yshift=-.5cm]environment.west) -- (s2.center) -- (s1.center) -- ([yshift=+.5cm]agent.west);
+\draw[thickarrow] ([yshift=-.5cm]environment.west) -- ++(-5, 0) -- ([shift={(-5, 0.5)}]agent.west)  -- ([yshift=+.5cm]agent.west);
+\draw[->] ([yshift=+.5cm]environment.west) -- ++(-4, 0) -- ([shift={(-4, -0.5)}]agent.west)  -- ([yshift=-.5cm]agent.west);
+\draw[dashed] (d1) -- (d2);
+\end{tikzpicture}
+\caption[\gls{mdp}]{\gls{mdp} control loop. The agent receives a state $s_t$ and a reward $r_t$. Once the action $a_t$ is selected, the environment transitions to the next state $s_{t+1}$. The transition yields a new reward $r_{t+1}$.}\label{fig:mdp}
+\end{figure}

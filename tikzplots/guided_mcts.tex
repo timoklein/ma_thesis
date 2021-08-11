@@ -1,0 +1,92 @@
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}[thick,scale=0.8, every node/.style={transform shape}]
+% Selection Tree Nodes
+\node (root_1) [thicknode]{};
+\node (tree1_node1) [thicknode, below left=0.5cm and 0.3cm of root_1]{};
+\node (tree1_node2) [node, below right=0.5cm and 0.3cm of root_1]{};
+\node (tree1_node3) [node, below right=0.5cm and 0.3cm of tree1_node2]{};
+\node (tree1_node4) [node, below left=0.5cm and 0.3cm of tree1_node1]{};
+\node (tree1_node5) [thicknode, below right=0.5cm and 0.3cm of tree1_node1]{};
+\node (tree1_node6) [node, below left=0.5cm and 0.3cm of tree1_node5]{};
+
+% Selection Tree lines
+\draw [thickarrow] (root_1) -- (tree1_node1);
+\draw [thickarrow] (tree1_node1) -- (tree1_node5);
+\draw [black] (root_1) -- (tree1_node2);
+\draw [black] (tree1_node2) -- (tree1_node3);
+\draw [black] (tree1_node1) -- (tree1_node4);
+\draw [black] (tree1_node5) -- (tree1_node6);
+%-----------------------------------------------------------------------------
+% Expansion Tree
+\node (root_2) [node, right=5cm of root_1]{};
+\node (tree2_node1) [node, below left=0.5cm and 0.3cm of root_2]{};
+\node (tree2_node2) [node, below right=0.5cm and 0.3cm of root_2]{};
+\node (tree2_node3) [node, below right=0.5cm and 0.3cm of tree2_node2]{};
+\node (tree2_node4) [node, below left=0.5cm and 0.3cm of tree2_node1]{};
+\node (tree2_node5) [node, below right=0.5cm and 0.3cm of tree2_node1]{};
+\node (tree2_node6) [node, below left=0.5cm and 0.3cm of tree2_node5]{};
+\node (tree2_expandednode) [thicknode, below right=0.5cm and 0.3cm of tree2_node5]{};
+
+% Expansion Tree lines
+\draw [thickarrow] (tree2_node5) -- (tree2_expandednode);
+\draw [black] (root_2) -- (tree2_node1);
+\draw [black] (tree2_node1) -- (tree2_node5);
+\draw [black] (root_2) -- (tree2_node2);
+\draw [black] (tree2_node2) -- (tree2_node3);
+\draw [black] (tree2_node1) -- (tree2_node4);
+\draw [black] (tree2_node5) -- (tree2_node6);
+%-----------------------------------------------------------------------------
+% Simulation Tree
+\node (root_3) [node, right=5cm of root_2]{};
+\node (tree3_node1) [node, below left=0.5cm and 0.3cm of root_3]{};
+\node (tree3_node2) [node, below right=0.5cm and 0.3cm of root_3]{};
+\node (tree3_node3) [node, below right=0.5cm and 0.3cm of tree3_node2]{};
+\node (tree3_node4) [node, below left=0.5cm and 0.3cm of tree3_node1]{};
+\node (tree3_node5) [node, below right=0.5cm and 0.3cm of tree3_node1]{};
+\node (tree3_node6) [node, below left=0.5cm and 0.3cm of tree3_node5]{};
+\node (tree3_expandednode) [below right=0.5cm and 0.3cm of tree3_node5]{\Large $\pmb f_\theta$};
+
+
+% Simulation Tree lines
+\draw [black] (tree3_node5) -- (tree3_expandednode);
+\draw [black] (root_3) -- (tree3_node1);
+\draw [black] (tree3_node1) -- (tree3_node5);
+\draw [black] (root_3) -- (tree3_node2);
+\draw [black] (tree3_node2) -- (tree3_node3);
+\draw [black] (tree3_node1) -- (tree3_node4);
+\draw [black] (tree3_node5) -- (tree3_node6);
+%-----------------------------------------------------------------------------
+% Backup Tree
+\node (root_4) [thicknode, right=5cm of root_3, fill=kit]{};
+\node (tree4_node1) [thicknode, below left=0.5cm and 0.3cm of root_4, fill=kit]{};
+\node (tree4_node2) [node, below right=0.5cm and 0.3cm of root_4]{};
+\node (tree4_node3) [node, below right=0.5cm and 0.3cm of tree4_node2]{};
+\node (tree4_node4) [node, below left=0.5cm and 0.3cm of tree4_node1]{};
+\node (tree4_node5) [thicknode, below right=0.5cm and 0.3cm of tree4_node1, fill=kit]{};
+\node (tree4_node6) [node, below left=0.5cm and 0.3cm of tree4_node5]{};
+\node (tree4_expandednode) [thicknode, below right=0.5cm and 0.3cm of tree4_node5, fill=kit]{};
+
+% Backup tree lines
+\draw [thickarrow] (tree4_expandednode) -- (tree4_node5);
+\draw [thickarrow] (tree4_node1) -- (root_4);
+\draw [thickarrow] (tree4_node5) -- (tree4_node1);
+\draw [black] (root_4) -- (tree4_node2);
+\draw [black] (tree4_node2) -- (tree4_node3);
+\draw [black] (tree4_node1) -- (tree4_node4);
+\draw [black] (tree4_node5) -- (tree4_node6);
+%-----------------------------------------------------------------------------
+% Labels
+\node (tree_policy) [below right=3.5cm and 2cm of root_1] {\LARGE $\pi_{\text{tree}}$};
+\node (params) [below=3.2cm of root_3]{\Large $f_\theta (\mathbf s) = \big( \pmb \mu, \, \pmb \sigma, \hat V \big)$};
+
+\node (selection) [above=1.1cm of root_1] {\large \textbf{Selection}};
+\node (expansion) [above=1cm of root_2] {\large \textbf{Expansion}};
+\node (evaluation) [above=1cm of root_3] {\large \textbf{Evaluation}};
+\node (backup) [above=1cm of root_4] {\large \textbf{Backup}};
+
+\node[draw=red, very thick, rounded corners, fit=(evaluation) (tree3_node4) (tree3_node3) (params)] {};
+
+\end{tikzpicture}
+\caption[Guided Monte Carlo tree search]{Iteration of the guided \gls{mcts}. The algorithm behaves like regular \gls{uct} (see Section~\ref{sssec:uct}) until the evaluation phase. Instead of a simulation, a network evaluation $f_\theta (\mathbf s)$ of the expanded node is performed. A Value estimate $\hat V$ and distribution parameters $(\pmb \mu, \, \pmb \sigma)$ are added to the node before the backup phase proceeds unmodified.}\label{fig:guided_mcts}
+\end{figure}

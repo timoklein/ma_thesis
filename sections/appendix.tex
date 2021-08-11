@@ -1,0 +1,453 @@
+\section{ECA automatic kernel size}\label{app:eca_automatic_formula}
+The authors state two assumptions before deriving their formula for the automatic kernel size \cite{wangECANetEfficientChannel2020}:
+\begin{enumerate}
+    \item A linear mapping $\phi$ between number of channels $C$ and kernel size $k$ like $C = \phi (k)$ is too restrictive to capture the relationship.
+    \item Channel dimensions in \glspl{cnn} are usually set to powers of two, e.g. $16$, $32$, $64$.
+\end{enumerate}
+The ECA paper therefore defines the following exponential relationship \cite{wangECANetEfficientChannel2020}:
+\begin{gather}\label{eq:eca_automatic_basic}
+    C = \phi (k) = 2^{\gamma \cdot k - b}~,
+\end{gather}
+where $\gamma$ and $b$ are constants to be chosen by the user.\\
+Equation~\ref{eq:eca_automatic_basic} can now be solved for $k$:
+\begin{align}\label{eq:eca_automatic_derivation}
+&& C & = 2^{\gamma \cdot k-b} \nonumber \\
+\Leftrightarrow && \ln C & = (\gamma \cdot k-b) \cdot \ln 2 \nonumber \\
+\Leftrightarrow && \frac{\ln C}{\ln 2} & = \gamma \cdot k-b \nonumber \\
+\Leftrightarrow && \log_2 C + b & = \gamma \cdot k \nonumber \\
+\Leftrightarrow && \frac{ \log_2 C}{ \gamma} + \frac{b}{\gamma} & = k
+\end{align}
+Rounding Formula~\ref{eq:eca_automatic_derivation} to the nearest odd number $| \cdot |_{odd}$ and plugging in $\gamma = 2$ and $b=1$ yields a mapping $\psi (C)$ from channels to kernel size \cite{wangECANetEfficientChannel2020}:
+\begin{gather}\label{eq:eca_automatic_final}
+    k = \psi(C) = \bigg| \frac{ \log_2 C + 1}{2}  \bigg|_{odd}~.
+\end{gather}
+The result in Equation~\ref{eq:eca_automatic_final} is used by the authors in all their experiments.
+
+\section{Proof of Proposition 1}\label{proof:log_abs_det_jacobian}
+The starting point is to show some helpful properties of the scaled $\tanh$ transformation.
+\begin{lemma}\label{lem:tanh_bijective}
+The scaled $\tanh$ Transformation $y = c \tanh (x)$ is bijective. Its inverse is $x = \artanh \big(\frac{1}{c}y \big)$.
+\end{lemma}
+\begin{proof}
+The first step is to prove that the scaled $\tanh$ transformation is invertible.
+\begin{align}
+     & y = c \tanh (x) \nonumber \\
+     \Leftrightarrow \qquad & x = \tanh^{-1} \Big(\frac{1}{c}y \Big) \nonumber \\
+     \Leftrightarrow \qquad & x = \artanh \Big(\frac{1}{c}y \Big) \nonumber \\
+     \Leftrightarrow \qquad & x = \frac{1}{2} \log \bigg( \frac{1 + \frac{1}{c} y}{1 - \frac{1}{c} y } \bigg) \nonumber \\
+\end{align}
+Since the range of the $\tanh$ is $(-1, 1)$, the range of the re-scaled $\tanh$ is $(-c, c)$. Thus the domain of the inverse function is $y \in (-c, c)$. Therefore $\frac{1 + \frac{1}{c} y}{1 - \frac{1}{c} y } > 0$ and the function is defined on $(-c, c)$.\\
+In the second step it has to be shown that $g^{-1}(g(x))=x$. This can be done by simply plugging in the definition of the scaled $\tanh$ transformation and simplifying
+\begin{align}
+     g^{-1}(g(x)) & = \frac{1}{2} \log \bigg( \frac{1 + \frac{1}{c} c \tanh (x)}{1 - \frac{1}{c} c \tanh (x)} \bigg) \nonumber \\
+     & = \frac{1}{2} \log \bigg( \frac{ 1 + \tanh (x) }{ 1 -  \tanh (x) } \bigg) \nonumber \\
+     & = \frac{1}{2} \log \bigg( \frac{1 + \frac{e^{2x} - 1}{e^{2x} + 1}}{1 -  \frac{e^{2x} - 1}{e^{2x} + 1)}} \bigg) \nonumber \\
+     & = \frac{1}{2} \log \bigg( \frac{\frac{e^{2x} + 1}{ e^2x + 1} + \frac{ e^{2x} - 1 }{ e^{2x} + 1 }}{\frac{ e^{2x} + 1 }{   e^{2x} + 1 } -  \frac{ e^{2x} - 1 }{ e^{2x} + 1 }} \bigg) \nonumber \\
+     & = \frac{1}{2} \log \bigg( \frac{\frac{e^{2x} + 1 + e^{2x} - 1 }{ e^{2x} + 1 } +}{\frac{ e^{2x} + 1 - e^{2x} + 1 }{ e^{2x} + 1}} \bigg) \nonumber \\
+      & = \frac{1}{2} \log \bigg( \frac{e^{2x} + 1 + e^{2x} - 1}{e^{2x} + 1 - e^{2x} + 1} \bigg) \nonumber \\
+      & = \frac{1}{2} \log \bigg( \frac{2e^{2x}}{2} \bigg) \nonumber \\
+      & = \frac{1}{2} \log \bigg(e^{2x} \bigg) \nonumber \\
+      & = x\nonumber \\
+\end{align}
+\end{proof}
+
+\begin{lemma}\label{lem:tanh_cont_diff}
+The scaled $\tanh$ Transformation $y = c \tanh (x)$ is continuously differentiable. Its derivative is $\frac{d}{dx} c \tanh(x) = c - c \tanh^2(x)$.
+\end{lemma}
+\begin{proof}
+The result follows directly from the derivative of the $\tanh$ function, which is $\frac{d}{dx} \tanh(x) = 1 - \tanh^2(x)$.
+\end{proof}
+\begin{remark}
+Since the scaled $\tanh$ transformation is applied element-wise, these results hold in the multivariable case.
+\end{remark}
+While lemmata~\ref{lem:tanh_bijective} and~\ref{lem:tanh_cont_diff} are rather trivial, their results are nevertheless needed to proceed further and apply the multivariable inverse function theorem to the scaled $\tanh$ transformation.
+
+\transformeddensity*
+
+\begin{proof}
+First define $\varphi (x) = \tanh^{-1} \Big(\frac{1}{c} x \Big)$ using Lemma~\ref{lem:tanh_bijective}. The \gls{cdf} of the transformed random variable $\mathbf a = c \tanh (\mathbf u)$ can then be written as
+\begin{gather}\label{eq:change_of_variables_1}
+    \int_{-c}^{c } \pi (\mathbf a | \mathbf s) \, d \mathbf a  =  \int_{\varphi(-c)}^{\varphi(c)} \mu ( \mathbf u | \mathbf s)  \, d \mathbf u
+\end{gather}
+Application of the change of variables to the integral in Formula~\ref{eq:change_of_variables_1} yields
+\begin{gather}\label{eq:change_of_variables_2}
+    \int_{\varphi(-c)}^{\varphi(c)} \mu (\mathbf u | \mathbf s) d \mathbf u  =  \int_{-c}^{c} \mu (\varphi (\mathbf a | \mathbf s)) \bigg| \det \frac{d \varphi (\mathbf a) }{d \mathbf a} \bigg| d \mathbf a  
+\end{gather}
+Lemma~\ref{lem:tanh_cont_diff} allows the application of the multivariable inverse function theorem to the term $\frac{d \varphi (\mathbf a) }{d \mathbf a}$. It can express the derivative of the inverse function $\varphi$ in terms of the scaled $\tanh$ transformation $\mathbf a = c \tanh\mathbf u$
+\begin{gather}\label{eq:inverse_function_theorem}
+    \frac{d \varphi \mathbf a}{d \mathbf a} = \frac{d \tanh^{-1} (\frac{1}{c} \mathbf a)}{d \mathbf a} = \bigg( \frac{d \, c \tanh\mathbf u}{d \mathbf u} \bigg)^{-1} = \bigg( \frac{d \mathbf a}{d \mathbf u} \bigg)^{-1}.
+\end{gather}
+For this result to hold, the Jacobian $\frac{d \mathbf a}{d \mathbf u}$ has to be invertible. Since the scaled $\tanh$ transformation is applied element-wise, $\frac{d \mathbf a}{d \mathbf u}$ is a diagonal matrix with the single-variable derivative $\frac{\partial \mathbf a}{\partial u_i} = c - c \tanh^2(u_i)$ of the transformation on the diagonal. Its determinant is thus
+\begin{align}
+    \bigg| \det \frac{d \mathbf a}{d \mathbf u} \bigg| & = \prod_{i=1}^D c (1 -  \tanh^2(u_i)) \nonumber \\
+    & = c^D \prod_{i=1}^D 1 -  \tanh^2(u_i)
+\end{align}
+From $\tanh^2(u_i) \in (-1, 1)$ it follows that $c - c \tanh^2(u_i) > 0$. This is enough to show that $ \frac{d \mathbf a}{d \mathbf u}$ is a positive definite matrix and thus invertible everywhere, allowing the substitution of Expression~\ref{eq:inverse_function_theorem} into Equation~\ref{eq:change_of_variables_2}.
+Swapping the inverse and determinant is now the only thing needed to arrive at Formula~\ref{eq:transformed_density}
+\begin{gather}
+   \mu ( \mathbf u | \mathbf s) \bigg| \det \bigg( \frac{d \mathbf a}{d \mathbf u} \bigg)^{-1} \bigg| = \mu ( \mathbf u | \mathbf s) \bigg| \det \frac{d \mathbf a}{d \mathbf u} \bigg|^{-1}~.
+\end{gather}
+\end{proof}
+
+
+\section{Squashed normal log probability correction}\label{app:log_prob_correction}
+The correction formula for the squashed normal log-likelihood follows from iterative application of the logarithm rules:
+\begin{align}
+\log \pi (\mathbf a | \mathbf s)  & = \log \Big( \frac{\mu (\mathbf u | \mathbf s)}{ c^D \prod_{i=1}^D 1- \tanh^2 (u_i)} \Big) \nonumber \\
+&  = \log \mu (\mathbf u | \mathbf s) - \log \Big( c^D \prod_{i=1}^D 1- \tanh^2 (u_i) \Big) \nonumber \\
+& = \log \mu (\mathbf u | \mathbf s) - \Big( \log c^D + \log \prod_{i=1}^D 1- \tanh^2 (u_i) \Big)\nonumber \\
+& = \log \mu (\mathbf u | \mathbf s) - \bigg( D \log c + \sum_{i=1}^D \log \Big( 1- \tanh^2 (u_i) \Big) \bigg) \nonumber \\
+& = \log \mu (\mathbf u | \mathbf s) - D \log c - \sum_{i=1}^D \log \Big( 1- \tanh^2 (u_i) \Big)
+\end{align}
+
+\section{Numerically stable log probability formula}\label{app:log_prob_numerical stability}
+Before starting to derive the more stable formula it helps to review some useful definitions and identities:
+\begin{enumerate}
+    \item The \emph{Softplus} function is given as $\softp(x) = \log (1 + e^x)$.  
+    \item The hyperbolic secant is given as 
+	$$\text{sech}(x) = \frac{1}{\cosh(x)} = \frac{2e^{-x}}{e^{-2x} + 1}$$
+	Here the definition of $\cosh(x) =  (e^{-2x} + 1)/ 2e^{-x}$ is used.  
+	\item $\tanh^2(x) + \text{sech}^2(x) = 1$, so $\text{sech}^2(x) = 1 - \tanh^2(x)$.   
+\end{enumerate}
+The goal here is to reformulate the entropy correction term. Using 2) and 3) yields:
+\begin{align}
+- \sum_{i=1}^D \log \Big( 1- \tanh^2 (u_i) \Big) & = - \sum_{i=1}^D \log \Big( \text{sech}^2 (u_i) \Big) \nonumber \\
+& = - 2 \cdot \sum_{i=1}^D \log \Big( \text{sech} (u_i) \Big) \nonumber \\
+& = - 2 \cdot \sum_{i=1}^D \log \Big( \frac{2e^{-u_i}}{e^{-2u_i} + 1} \Big) \label{eq:app_stable_correction_sech}
+\end{align}
+
+After this key step is done, Expression~\ref{eq:app_stable_correction_sech} can be simplified by applying logarithm rules:
+
+\begin{align}
+- 2 \cdot \sum_{i=1}^D \log \Big( \text{sech} (u_i) \Big) & = - 2 \cdot \sum_{i=1}^D \log \Big( \frac{2e^{-u_i}}{e^{-2u_i} + 1} \Big) \nonumber \\
+& = - 2 \cdot \sum_{i=1}^D \Big( \log (2e^{-u_i}) - \log (e^{-2u_i} + 1) \Big) \nonumber \\
+& = - 2 \cdot \sum_{i=1}^D \Big( \log 2 + \log e^{-u_i} - \log (e^{-2u_i} + 1) \Big) \nonumber \\
+& = - 2 \cdot \sum_{i=1}^D \Big( \log 2 -u_i - \log (e^{-2u_i} + 1) \Big)\label{eq:app_softplus_unsimplified}
+\end{align}
+
+Now the definition of the Softplus function can be inserted into Equation~\ref{eq:app_softplus_unsimplified}:
+\begin{gather}\label{eq:app_softplus_simplified}
+- 2 \cdot \sum_{i=1}^D \Big( \log 2 -u_i - \log (e^{-2u_i} + 1) \Big) = - 2 \cdot \sum_{i=1}^D \Big( \log 2 -u_i - \softp(-2u_i) \Big)
+\end{gather}
+
+\ref{eq:app_softplus_simplified} is the formula commonly seen in code repositories. Below is an example snippet from OpenAI's SpinningUp library \cite{achiamSpinningDeepReinforcement2018}:
+\begin{lstlisting}[language=Python, deletekeywords={sum}]
+import numpy as np
+import torch.nn.functional as F
+# pi_distribution is a pytorch normal distribution object
+logp_pi = pi_distribution.log_prob(pi_action).sum(axis=-1)
+# Correct the log probabilities by the formula derived above
+logp_pi -= (
+        2*(np.log(2) - pi_action - F.softplus(-2*pi_action))
+    ).sum(axis=1)
+\end{lstlisting}
+
+\clearpage
+\section{Evaluation scenarios}\label{app:scenarios}
+This section briefly describes all the cooperative driving scenarios used for evaluation.
+\begin{figure}[!h]
+\centering
+\includesvg[width=\textwidth]{scenarios/sc01}
+\caption[Scenario 01]{Scenario 01. The red agent wants to merge onto lane one, where the faster green vehicle wants to keep the lane.}\label{fig:sc01}
+\end{figure}
+\begin{figure}[!h]
+\centering
+\includesvg[width=\textwidth]{scenarios/sc02}
+\caption[Scenario 02]{Scenario 02. Both vehicles want to keep the lane, but the green agent is faster and has a higher desired velocity than the red agent.}\label{fig:sc02}
+\end{figure}
+\begin{figure}[!h]
+\centering
+\includesvg[width=\textwidth]{scenarios/sc03}
+\caption[Scenario 03]{Scenario 03. All agents have the same target velocity, but the red agent wants to switch lanes and must merge between the other two vehicles.}\label{fig:sc03}
+\end{figure}
+\begin{figure}[!h]
+\centering
+\includesvg[width=\textwidth]{scenarios/sc04}
+\caption[Scenario 04]{Scenario 04. Similar to the previous scenario, the green agent wants to merge onto lane zero, where two vehicles are approaching. To complete the maneuver, it must either accelerate or decelerate.}\label{fig:sc04}
+\end{figure}
+\begin{figure}[!h]
+\centering
+\includesvg[width=\textwidth]{scenarios/sc05}
+\caption[Scenario 05]{Scenario 05. The red vehicle must react to the green vehicle's lane change due to avoiding the obstacles on lane zero.}\label{fig:sc05}
+\end{figure}
+\begin{figure}[!h]
+\centering
+\includesvg[width=\textwidth]{scenarios/sc06}
+\caption[Scenario 06]{Scenario 06. The red agent wants to merge onto lane one at the same time as the green vehicle must avoid the obstacles.}\label{fig:sc06}
+\end{figure}
+\begin{figure}[!h]
+\centering
+\includesvg[width=\textwidth]{scenarios/sc07}
+\caption[Scenario 07]{Scenario 07. The blue agent must merge onto lane one to avoid the obstacles in its path. However, the lane is already occupied by two approaching vehicles.}\label{fig:sc07}
+\end{figure}
+\begin{figure}[!h]
+\centering
+\includesvg[width=\textwidth]{scenarios/sc10}
+\caption[Scenario 08]{Scenario 08. Both agents must cooperate and merge into the middle to avoid obstacles in a bottleneck.}\label{fig:sc08}
+\end{figure}
+
+\section{Reward parameters}\label{app:reward_params}
+Table~\ref{tab:reward_parameters} shows the values of all reward weight coefficients described in Section~\ref{sssec:scenario_rewards}. While they can be adjusted individually for each scenario, all parameters are kept fixed for this work.
+\begin{table}[H]
+    \centering
+    \begin{tabular}{c c c}
+    \toprule
+    \textbf{Notation} & \textbf{Parameter} & \textbf{Value}\\
+    \toprule
+     $w_{LC}$ & Lane change weight & $-10.0$ \\
+     $w_{AX}$ & Longitudinal acceleration weight & $0.0$ \\
+     $w_{AY}$ & Lateral acceleration weight & $-5.0$ \\
+     $w_{VD}$ & Velocity deviation weight & $500.0$ \\
+     $w_{LD}$ & Lane deviation weight &  $100.0$\\
+     $w_{LCD}$ & Lane center deviation weight & $85.0$ \\
+     $w_{IS}$ & Punishment for invalid states & $-1000.0$ \\
+     $w_{C}$ & Punishment for collisions & $-1000.0$ \\
+     $w_{IA}$ & Punishment for invalid actions & $0.0$ \\
+     $\lambda_i$ & Cooperation factor & $0.5$ \\
+    \toprule
+    \end{tabular}
+    \caption[Reward function constants]{Constants in the reward function and their settings.}
+    \label{tab:reward_parameters}
+\end{table}
+
+
+\section{Network architecture}\label{app:network_architecture}
+This appendix gives the full PyTorch printout of the network architecture as described in Section~\ref{ssec:network_architecture}. While it is more detailed than simply listing parameters in a table it allows for exact re-implementation of the model.
+
+Embedding architecture. Numerical agent states are vectors of length $60$.
+\label{code:embedding}\begin{lstlisting}[escapeinside={(*}{*)}]
+(embedding): class=LinearEmbedding, input_dim=60, embedding_dim=64,
+embed_dropout=False, positional_encoding=Embedding(8, 64), device=gpu
+\end{lstlisting}
+
+Transformer architecture with four encoder layers and $d_{model}=64$. Each layer has two heads. Because the layers are identical only the first one is shown.
+\label{code:transformer}\begin{lstlisting}[escapeinside={(*}{*)}]
+TransformerEncoder(
+    (layers): ModuleList(
+      (0): TransformerEncoderLayer(
+        (self_attn): MultiheadAttention(
+          (out_proj): _LinearWithBias(in_features=64, out_features=64, 
+          bias=True)
+        )
+        (linear1): Linear(in_features=64, out_features=256, bias=True)
+        (dropout): Dropout(p=0.0, inplace=False)
+        (linear2): Linear(in_features=256, out_features=64, bias=True)
+        (norm1): LayerNorm((64,), eps=1e-05, elementwise_affine=True)
+        (norm2): LayerNorm((64,), eps=1e-05, elementwise_affine=True)
+        (dropout1): Dropout(p=0.0, inplace=False)
+        (dropout2): Dropout(p=0.0, inplace=False)
+      )
+    )
+  )
+\end{lstlisting}
+
+ResNet architecture used in the convolutional tower of this work. It consists of an initial convolution with max pooling followed by three basic convolutional blocks. The output is reduced to a vector with $128$ elements by a fully convolutional head.
+\label{code:cnn}\begin{lstlisting}[escapeinside={(*}{*)}]
+AttentionResNet(
+    (trunk): Sequential(
+      (block1): BasicBlock(
+        (nonlinearity): ReLU()
+        (conv1): Conv2d(16, 32, kernel_size=(3, 3), stride=(2, 2), 
+        padding=(1, 1), bias=False, padding_mode=reflect)
+        (conv2): Conv2d(32, 32, kernel_size=(3, 3), stride=(1, 1), 
+        padding=(1, 1), bias=False, padding_mode=reflect)
+        (channel_attention): ECALayer(
+          (avg_pool): AdaptiveAvgPool2d(output_size=1)
+          (conv): Conv1d(1, 1, kernel_size=(3,), stride=(1,), padding=(1,), 
+          bias=False)
+        )
+        (projection): Conv2d(16, 32, kernel_size=(1, 1), stride=(2, 2), 
+        bias=False)
+      )
+      (block2): BasicBlock(
+        (nonlinearity): ReLU()
+        (conv1): Conv2d(32, 64, kernel_size=(3, 3), stride=(2, 2), 
+        padding=(1, 1), bias=False, padding_mode=reflect)
+        (conv2): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), 
+        padding=(1, 1), bias=False, padding_mode=reflect)
+        (channel_attention): ECALayer(
+          (avg_pool): AdaptiveAvgPool2d(output_size=1)
+          (conv): Conv1d(1, 1, kernel_size=(3,), stride=(1,), padding=(1,), 
+          bias=False)
+        )
+        (projection): Conv2d(32, 64, kernel_size=(1, 1), stride=(2, 2), 
+        bias=False)
+      )
+      (block3): BasicBlock(
+        (nonlinearity): ReLU()
+        (conv1): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2), 
+        padding=(1, 1), bias=False, padding_mode=reflect)
+        (conv2): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), 
+        padding=(1, 1), bias=False, padding_mode=reflect)
+        (channel_attention): ECALayer(
+          (avg_pool): AdaptiveAvgPool2d(output_size=1)
+          (conv): Conv1d(1, 1, kernel_size=(5,), stride=(1,), padding=(2,), 
+          bias=False)
+        )
+        (projection): Conv2d(64, 128, kernel_size=(1, 1), stride=(2, 2), 
+        bias=False)
+      )
+    )
+    (inital_conv_pool): Sequential(
+      (conv7x7): Conv2d(2, 16, kernel_size=(3, 3), stride=(1, 1), 
+      padding_mode=reflect)
+      (norm): Identity()
+      (nonlinearity): Hardswish()
+      (pool3x3): MaxPool2d(kernel_size=3, stride=2, padding=0, dilation=1,
+      ceil_mode=False)
+    )
+    (fcn_head): Sequential(
+      (avgpool): AdaptiveAvgPool2d(output_size=1)
+      (1x1conv1): Conv2d(128, 256, kernel_size=(1, 1), stride=(1, 1), 
+      bias=False)
+      (nonlinearity1): Hardswish()
+      (1x1conv2): Conv2d(256, 128, kernel_size=(1, 1), stride=(1, 1), 
+      bias=False)
+      (nonlinearity2): Hardswish()
+    )
+  )
+\end{lstlisting}
+
+The policy is a four-layer \gls{mlp}.
+\label{code:policy}\begin{lstlisting}[escapeinside={(*}{*)}]
+(policy): class=DiagonalGMMPolicy,components=3, state_dim=192, action_dim=2,
+action_bound=5, log_std_bounds=(-5, 2), 
+hidden_layers=4, hidden_units=[1024, 512, 512, 256], 
+nonlinearity=ReLU, layernorm=False
+\end{lstlisting}
+
+
+\section{Hyperparameters}\label{app:hyperparameter_settings}
+Table~\ref{tab:mcts_hyperparams} lists the relevant \gls{mcts} parameters used to obtain the results from Chapter~\ref{sec:evaluation}. Hyperparameters for the \gls{rl} models were tuned by hand. A setting is deemed relevant if it differs from the baseline settings or if it is of importance to the \gls{rl} training procedure.
+\begin{table}[H]
+    \centering
+    \begin{tabular}{c c c}
+    \toprule
+    \textbf{Notation} & \textbf{Parameter} & \textbf{Value}\\
+    \toprule
+    $\gamma$ & Discount factor & $0.7$ \\
+    $C_{uct}$ & Initial UCT & $200$ \\
+    $C_{uct}$ & UCT constant & $4$ \\ 
+     & Move grouping & \texttt{False} \\
+     & $\varepsilon$-greedy selection & \texttt{False} \\
+     & Action noise & \texttt{False} \\
+     & Blind values & \texttt{False} \\
+     & Expansion policy & \emph{expansionUCT} \\
+     & Final selection & \emph{continuousMaxActionValue} \\
+    $C_{pw}$ & Progressive widening (PW) coefficient & $1$ \\
+    $\alpha_{pw}$ & PW exponent & $0.7$ \\
+    & Predetermined actions & \texttt{False} \\
+    & Numerical state history length & $8$ \\
+    $\min(r)$ & Minimum unnormalized reward & $-2603.0$ \\
+    $\max(r)$& Maximum unnormalized reward & $685.0$ \\
+    $d$ & Reward interval diameter & $3288.0$ \\
+    & Minimum scaled reward & $-1$ \\
+    & Maximum scaled reward & $1$ \\
+    & Maximum longitudinal range & $128m$ \\
+    & Maximum lateral range & $12.8m$ \\
+    & Map size $C \times H \times W$ & $2 \times 32 \times 64$ \\
+    & $x$ axis scaling & $0.5 \times$ \\
+    & $y$ axis scaling & $2.5 \times$ \\
+    & Max agents & $8$ \\
+    & Max speed & $36 m/s$ \\
+    & Max vehicle length & $5m$ \\
+    & Max vehicle width & $2.2m$ \\
+    & Max lanes & $4$ \\
+    \toprule
+    \end{tabular}
+    \caption[MCTS hyperparameters for the RL algorithm]{\gls{mcts} parameter settings for the \gls{rl} algorithm.}
+    \label{tab:mcts_hyperparams}
+\end{table}
+
+The training parameters for the \gls{rl} algorithm are listed in Table~\ref{tab:training_hyperparams}. For the model trained on both scenario 06 and scenario 08, $D=240000$ and $T=20000$.
+\begin{table}[H]
+    \centering
+    \begin{tabular}{c c c}
+    \toprule
+    \textbf{Notation} & \textbf{Parameter} & \textbf{Value}\\
+    \toprule
+    $E$ & Training episodes & $120$ \\
+    $D$ & Replay buffer size & $120000$ \\
+    $T$ & Samples per episode & $10000$ \\
+    $P$ & Training epochs & $1$ \\
+    $B$ & Batch size & $1024$ \\
+     & Centralized value estimates & \texttt{True} \\
+     & Iteration randomization & \texttt{False} \\
+     & Rollouts & \texttt{False} \\
+    & Optimizer & SGD \\
+    $\lambda$ & Learning rate & $0.001$ \\
+    & Momentum & $0.9$ \\
+    & Weight decay & $0.00002$ \\
+    & Gradient max value & $10.0$ \\
+    $\tau$ & Target temperature & $10.0$ \\
+    & Loss policy coefficient & $1.0$ \\
+    & Loss value coefficient & $1.0$ \\
+    $\alpha$ & Loss entropy coefficient & $0.2$ \\
+    & Scalar reduction & \texttt{action} \\
+    \toprule
+    \end{tabular}
+    \caption[Training hyperparameters for the RL algorithm]{Training hyperparameters for the \gls{rl} algorithm.}
+    \label{tab:training_hyperparams}
+\end{table}
+
+\section{Baseline hyperparameters}\label{app:baseline_hyperparameters}
+The baseline \gls{mcts} parameters were optimized using Bayesian optimization in an unpublished work. Relevant values are listed in the following table. Move grouping settings refer to the semantic action groups. More information on them can be found in \cite{kurzerDecentralizedCooperativePlanning2018}.
+\begin{table}[H]
+    \centering
+    \begin{tabular}{c c c}
+    \toprule
+    \textbf{Notation} & \textbf{Parameter} & \textbf{Value}\\
+    \toprule
+    $\gamma$ & Discount factor & $0.7$ \\
+     & Initial UCT & $200$ \\
+     $C_{uct}$ & UCT constant & $4.0$ \\ 
+     & $\varepsilon$-greedy selection & \texttt{False} \\
+     & Action noise & \texttt{False} \\
+     & Blind values & \texttt{True} \\
+     & \# BV candidate samples & $100$ \\
+     & Expansion policy & \emph{expansionUCT} \\
+     & Final selection & \emph{continuousMaxActionValue} \\
+    $C_{pw}$ & Progressive widening (PW) coefficient & $0.55$ \\
+    $\alpha_{pw}$ & PW exponent & $0.4$ \\
+    $\alpha_{pw}$ & Max PW depth & $2$ \\
+     & Move Grouping (MG) & \texttt{True} \\
+     & MG UCT constant & $12.0$\\
+     & MG detailed action classes & \texttt{True} \\
+     & MG final decision & \texttt{True} \\
+     & MG PW bias & \texttt{True} \\
+     & MG PW coefficient & $0.55$ \\
+     & MG PW exponent & $0.4$ \\
+    \toprule
+    \end{tabular}
+    \caption[MCTS hyperparameters for the baseline]{\gls{mcts} parameters for the baseline.}
+    \label{tab:baseline_hyperparams}
+\end{table}
+
+\section{Set of training seeds}\label{app:training_seeds}
+The training seeds used for all runs are: 1337, 7961, 4089.
+
+\section{Set of evaluation seeds}\label{app:evaluation_seeds}
+For the evaluation, a set of $100$ randomly generated seeds between $0$ and $9001$ has been used.
+
+2005, 5579, 4614, 3534, 2410, 5850, 5942, 6299, 4913, 3374, 1915, \\
+5503, 8988, 1662, 432, 8051, 1246, 6407,5710, 7705, 5744, 1806, \\
+4808, 2398, 6272, 1125, 310, 7352, 4628, 6086, 846, 3481, 8124,\\
+1078, 118, 2017, 6829, 5608, 5550, 8619, 8887, 8063, 5530, 5517,\\
+5240, 6898, 6097, 739, 1351, 5884, 8157, 6668, 7258, 8833, 6969,\\
+1499, 7315, 775, 6801, 4091, 468, 475, 6290, 7100, 3328, 4484,\\
+8618, 5698, 5920, 5762, 7542, 4347, 8677, 8040, 5191, 7558, 7924,\\
+5753, 8613, 6194, 2475, 475, 6120, 1727, 1600, 8514, 6668, 8410,\\
+5744, 1270, 308, 735, 3597, 8060, 4946, 3586, 615, 1646, 7605,\\
+6723. 
+
+\section{Iteration randomization}\label{app:iteration_randomization}
+Iteration randomization is a training scheme where the number of \gls{mcts} iterations is randomized between a high value and a low value during training \cite{wuAcceleratingSelfPlayLearning2020}. The goal is to generate data faster and produce more diverse situations during training. Figure~\ref{fig:playout_line} shows an evaluation using $400$ as high and $80$ as low value on scenario 08. Full searches with $400$ iterations are performed $33\%$ of the time. The iteration randomization model  only slightly outperforms a \gls{gmm} with $3$ components despite a $2.5 \times$ increase in wall clock training time. The \gls{gmm} $3$ was trained using $200$ iterations.
+\begin{figure}[h]
+	\centering
+	\captionsetup{justification=centering}
+	\scalebox{0.9}{
+    \input{images/playout_lineplot.pdf_tex}
+    }
+	\caption[Iteration randomization success rate]{The iteration randomization model slightly outperforms the non-randomized \gls{gmm} for low iterations. Both models outperform the baseline. Note that the $x$-axis is scaled logarithmically.}
+\label{fig:playout_line}
+\end{figure}

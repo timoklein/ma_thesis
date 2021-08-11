@@ -1,0 +1,30 @@
+\glsresetall
+\section{Introduction}\label{sec:introduction}
+\gls{rl} has been responsible for some of the biggest breakthroughs in the recent history of artificial intelligence. It has solved the long standing grand challenge of Go \cite{silverMasteringGameGo2016}, achieved Grandmaster-level performance in the video game Starcraft II \cite{vinyalsGrandmasterLevelStarCraft2019} and navigated balloons in the stratosphere \cite{bellemareAutonomousNavigationStratospheric2020}. Succeeding in tasks which experts deemed decades away has been made possible by a combination of classical \gls{rl} with neural network function approximation called \gls{drl}. Due to its tremendous achievements, some researchers have even hypothesized that reward maximization is sufficient for the construction of artificial general intelligence \cite{silverRewardEnough2021}.
+
+A tantalizing application domain for such an artificial intelligence is highly automated traffic. Futurists imagine meals delivered by autonomous vehicles and parcels arriving via autonomous drones. Seamless cooperation between cars and trucks on highways makes the congestion plaguing large cities a thing of the past. Along the way, the efficiency gains of fully autonomous traffic reduce humanity's carbon footprint and contribute towards overcoming the biggest challenge of our generation: climate change \cite{rolnickTacklingClimateChange2019}.
+
+Why has this future not been realized yet despite \gls{drl}'s fabulous success stories? As amazing of a tool as it is, \gls{drl} is still bedeviled by many issues. Particularly its deployment to the real world has been impeded by what is in robotics called the \emph{reality gap}. Looking at the achievements presented in the introductory paragraph, a common thread emerges: \gls{drl} has been successful in domains where simulators can provide the vast amounts of data needed for trial and error learning. On the other hand, progress in real-world applications has been slow.
+
+Delving deeper into the reality gap, a number of smaller issues emerge which together hamper the adoption of \gls{drl} for autonomous driving. A recent survey has identified nine challenges holding back \gls{rl} in the real world \cite{dulac-arnoldEmpiricalInvestigationChallenges2021}. Of these, four are of particular interest and together with a fifth question form a set of guiding research objectives for this thesis:
+\begin{enumerate}
+    \item Being able to learn on live systems from limited samples.
+    \item Learning and acting in high-dimensional state and action spaces. 
+    \item Reasoning about system constraints that should never or rarely be violated.
+    \item Being able to provide actions quickly, especially for systems requiring low latencies.
+    \item Dealing with other learning agents within the same environment.
+\end{enumerate}
+In the autonomous driving setting on which this work is based, cooperative driving scenarios are given and implemented in a simulator. An \gls{mcts} based planner is used to solve these situations \cite{kurzerDecentralizedCooperativePlanning2018}. The main research objective can therefore be narrowed down to:
+
+\indent \emph{How can the sample efficiency of a cooperative planning algorithm be improved?}
+
+To answer this research question, a combination of \gls{drl} and the aforementioned \gls{mcts} is employed. The method is motivated by the success of AlphaZero in Go, where intertwining learning and search has led to superior performance compared to supervised learning \cite{silverMasteringGameGo2016, silverMasteringGameGo2017}. Building on previous work, a hybrid input representation is used by a neural network to prune likely unpromising actions from the \gls{mcts} sampling \cite{kurzerAcceleratingCooperativePlanning2020}. The network is inspired by recent Transformer architectures \cite{vaswaniAttentionAllYou2017, devlinBERTPretrainingDeep2019, dosovitskiyIMAGEWORTH16X162021a} and uses a self-attention mechanism to learn proposal distributions for a flexible number of agents. Through the Transformer, an agent is able to predict the behavior of other agents with the limited data available from its own point of view. Usage of a transformed Gaussian distribution allows the enforcement of action bounds, thereby conforming to the physical limitations of real-life vehicles \cite{haarnojaSoftActorCriticAlgorithms2018}. Lastly, the algorithm is trained by extending a recently proposed AlphaZero modification (A0C) for continuous action spaces \cite{moerlandA0CAlphaZero2018} to multi-agent environments.
+
+The structure of this thesis is given as follows: First, the theoretical basis for the proposed method is defined by an introduction to \gls{rl}. Then, \gls{mcts} is explained along with some relevant modifications. Neural networks are introduced next, with a focus on important building blocks for this thesis. The third chapter constitutes a short review of related literature and provides context to the approach. Afterwards, the environment is defined, which is followed by the derivation of a transformed normal distribution. Subsequently, the A0C loss is extended to multi-agent settings before the network architecture is introduced. Last in the chapter, the guided \gls{mcts} procedure is described. This is followed by a short section on implementation details. The next chapter presents the evaluation results of the proposed algorithm and discusses its empirical performance. A discussion of the results along with their limitations is followed by a conclusion and an outlook.
+
+To summarize, this thesis provides the following contributions to extant literature:
+\begin{itemize}
+    \item Novel self-attention based network architecture suitable for applying guided \gls{mcts} to scenarios with a flexible number of agents.
+    \item Extension of the A0C loss for continuous domains to multi-agent settings.
+    \item Thorough empirical evaluation demonstrating the sample efficiency and generalization abilities at test time.
+\end{itemize}

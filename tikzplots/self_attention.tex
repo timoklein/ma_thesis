@@ -1,0 +1,25 @@
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}[scale=0.85]
+
+\node (mul1) [rectangle, thick, rounded corners, minimum width=3cm, minimum height=1cm, draw=black, fill=pool_color]{ \textbf{MatMul}};
+\node (scale) [rectangle, thick, rounded corners, minimum width=2cm, minimum height=1cm, draw=black, fill=add_norm_color, above=0.5cm of mul1]{ \textbf{Scale}};
+\node (mask) [rectangle, thick, rounded corners, minimum width=2cm, minimum height=1cm, draw=black, fill=emb_color, above=0.5cm of scale]{ \textbf{Mask (opt)}};
+\node (softmax) [rectangle, thick, rounded corners, minimum width=2cm, minimum height=1cm, draw=black, fill=conv_color, above=0.5cm of mask]{ \textbf{Softmax}};
+\node (mul2) [rectangle, thick, rounded corners, minimum width=3cm, minimum height=1cm, draw=black, fill=pool_color, above right=0.5cm and 0.5cm of softmax]{ \textbf{MatMul}};
+
+\node (Q) [below right= 1cm and 0.3cm of mul1.west] {$\mathbf Q$};
+\node (K) [below left= 1cm and 0.3cm of mul1.east] {$\mathbf K$};
+\node (V) [right= 1.5cm of K] {$\mathbf V$};
+
+\draw [thickarrow] (mul1) -- (scale);
+\draw [thickarrow] (scale) -- (mask);
+\draw [thickarrow] (mask) -- (softmax);
+\draw [thickarrow] (softmax) -- (mul2);
+\draw [thickarrow] (Q) -- (-1.05, -0.6);
+\draw [thickarrow] (K) -- (1.03, -0.6);
+\draw [thickarrow] (V) -- (mul2);
+
+\end{tikzpicture}
+\caption[Self-attention]{Computational graph of self-attention. Queries $\mathbf Q$ are multiplied with keys $\mathbf K$ and scaled. Optional masking prevents the model from attending to specific positions. After applying the $\softmax$ function, values $\mathbf V$ are multiplied together with the learned weights. Graphic is based on \cite{vaswaniAttentionAllYou2017}.}\label{fig:self_attention}
+\end{figure}

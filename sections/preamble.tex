@@ -1,0 +1,16 @@
+\pagenumbering{roman}
+\include{sections/titlepage}
+%Für den Fall eines Vorworts entkommentieren:
+%\include{sections/prologue}
+\include{sections/abstract}
+%\setcounter{page}{3}
+\tableofcontents\newcounter{roemisch} %\setcounter{roemisch}{\value{page}}
+% Für den Fall von Abkürzungs-, Abbildungs- oder Tabellenverzeichnissen entkommentieren
+\ifthenelse{\boolean{english}}
+{\cleardoublepage\printnoidxglossary[type=acronym, sort=letter,nonumberlist,title={List of Abbreviations}]}
+{\cleardoublepage\printnoidxglossary[type=acronym, sort=letter,nonumberlist,title={Abkürzungsverzeichnis}]}
+\cleardoublepage\listoffigures
+\cleardoublepage\listoftables
+\cleardoublepage\setcounter{page}{2} 
+\cleardoublepage
+\pagenumbering{arabic}

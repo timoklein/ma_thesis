@@ -1,0 +1,30 @@
+\begin{figure}[!h]
+\centering
+    \begin{tikzpicture}
+        \node[functions] (center) {};
+        \node[below of=center,text width=4em] {Activation function};
+        \draw[thick] (0.5em,0.5em) -- (0,0) -- (-0.5em,0);
+        \draw (0em,0.75em) -- (0em,-0.75em);
+        \draw (0.75em,0em) -- (-0.75em,0em);
+        \node[right of=center] (right) {};
+            \path[draw,->] (center) -- (right);
+        \node[functions,left=3em of center] (left) {$\sum$};
+            \path[draw,->] (left) -- (center);
+        \node[weights,left=3em of left] (2) {$w_1$} -- (2) node[input,left=1cm of 2] (l2) {$x_1$};
+            \path[draw,->] (l2) -- (2);
+            \path[draw,->] (2) -- (left);
+        \node[below of=2] (dots) {$\vdots$} -- (dots) node[left=1.35cm of dots] (ldots) {$\vdots$};
+        \node[weights,below of=dots] (n) {$w_n$} -- (n) node[input,left=1cm of n] (ln) {$x_n$};
+            \path[draw,->] (ln) -- (n);
+            \path[draw,->] (n) -- (left);
+        \node[weights,above of=2] (1) {$w_0$} -- (1) node[input,left=1cm of 1] (l1) {$x_0$};
+            \path[draw,->] (l1) -- (1);
+            \path[draw,->] (1) -- (left);
+        \node[weights,above of=1] (0) {$w_b$} -- (0) node[input,left=1cm of 0] (l0) {$b$};
+            \path[draw,->] (l0) -- (0);
+            \path[draw,->] (0) -- (left);
+        \node[below of=ln] {Inputs};
+        \node[below of=n] {Weights};
+    \end{tikzpicture}
+\caption[Perceptron]{The Perceptron. First inputs are weighted and summed together with a bias term. Then they are transformed by a nonlinear activation function.}\label{fig:perceptron}
+\end{figure}

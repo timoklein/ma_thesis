@@ -1,0 +1,163 @@
+\ProvidesPackage{thesis}[2009/11/03 v0.1 Styledefinitionen]
+
+\setlength{\parskip}{0.2cm}
+\setlength{\parindent}{0cm}
+\setlength{\headheight}{15pt} %-----------------------------------------------------------------------------------------------------------------------------
+%Einstellung der Randabstände
+\usepackage[lmargin={2.5cm},rmargin={2.5cm},tmargin={2.5cm},bmargin={2.5cm}]{geometry}
+%zur Einbindung von Graphiken
+\usepackage{graphicx}
+%Bearbeitung von Kopf- und Fusszeile
+\usepackage{fancyhdr}
+%Schriftart
+\usepackage{helvet}
+%stellt unabhängige Textmarken zu Verfügung
+\usepackage{extramarks}
+%aktiviert eine Umgebung in der der Mathematikmodus aktiv ist
+\usepackage{amsmath}
+%coole Zeichentools
+\usepackage{tikz}\usetikzlibrary{arrows.meta, positioning, decorations.pathmorphing, fit,backgrounds, matrix}
+%aktiviert eine Umgebung in der der Mathematikmodus aktiv ist
+\usepackage{amsthm}
+%aktiviert eine Umgebung in der der Mathematikmodus aktiv ist
+\usepackage{amssymb}
+%aktiviert Hyperlinks
+\usepackage{hyperref} 
+%Stellt das Eurozeichen ? zu Verfügung
+\usepackage[right]{eurosym}
+
+\usepackage[ngerman,english]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[utf8x]{inputenc} 		% Nur einbinden, wenn LuaLatex nicht vorhanden!
+
+
+\usepackage[symbols, acronyms,ucmark=true]{glossaries-extra}
+\makenoidxglossaries
+\setabbreviationstyle[acronym]{long-short}
+
+\usepackage{blindtext}
+
+\usepackage{pdflscape}
+\usepackage{svg}
+\usepackage{fancybox}
+\usepackage{color}
+\usepackage{float}
+\usepackage{framed}
+\usepackage{url}
+\usepackage{newclude}
+\usepackage{xcolor, colortbl}
+\definecolor{kit}{cmyk}{1,0,0.6,0}
+\definecolor{pyblue}{rgb}{0,0,139}
+\definecolor{cppgreen}{rgb}{0,128,0}
+\colorlet{lightkit}{kit!30!}
+\colorlet{lightbrown}{RawSienna!30!}
+\usepackage{subcaption}
+
+%%%%%% LUA %%%%%%
+%\usepackage{fontspec}
+%\setmainfont[Numbers=Lining]{Calibri} % Hier kann zu ziemlich jede beliebige Schriftart angegeben werden.
+
+% Hier kommt ein Beispiel für LUA und tikz, das in section3.tex ausgeführt wird:
+%\directlua{
+%function coth (i) 
+%  return math.cosh(i) / math.sinh(i)
+%end
+%
+%function brillouin (J, x) 
+%  if x == 0 then
+%    return 0
+%  else
+%   return (2*J+1)/(2*J)*coth((2*J+1)/(2*J)*x) - 
+%        1/(2*J)*coth(1/(2*J)*x)
+%  end
+%end
+%}
+%\pgfmathdeclarefunction{Brillouin}{2}{%
+%  \edef\pgfmathresult{%
+%     \directlua{tex.print("" .. brillouin(#1,#2))}%
+%   }%  
+%}
+%%%%%% EO LUA %%%%
+
+
+%Weitere
+
+%-----------------------------------------------------------------------------------------------------------------------------------------
+\renewcommand{\baselinestretch}{1.24}
+\fancyhead[LO]{\slshape \small \firstleftmark}
+\fancyhead[RO]{\normalsize\thepage} \fancyfoot{}
+\interfootnotelinepenalty=\@M
+%-----------------------------------------------------------------------------------------------------------------------------------------
+%TIKZ
+% tikz styles for the MCTS plot
+\tikzstyle{node} = [circle, minimum width=0.5cm, minimum height=0.5cm, draw=black, fill=none]
+\tikzstyle{rewardfinal} = [rectangle, ultra thick,  minimum width=0.5cm, minimum height=0.5cm, draw=black, fill=none]
+\tikzstyle{thicknode} = [circle, ultra thick, minimum width=0.5cm, minimum height=0.5cm, draw=black, fill=none]
+\tikzstyle{thickarrow} = [ultra thick,->,>=stealth]
+
+% tikz styles for the MDP plot
+\tikzstyle{object} = [rectangle, very thick, rounded corners, minimum width=4cm, minimum height=2cm, draw=black, fill=none]
+
+% Tikz styles for the perceptron
+\tikzset{basic/.style={draw,text width=1em,text badly centered}}
+\tikzset{input/.style={basic,circle}}
+\tikzset{weights/.style={basic,rectangle}}
+\tikzset{functions/.style={basic,circle}}
+
+% Tikz styles for the network
+\tikzset{%
+  every neuron/.style={
+    circle,
+    draw,
+    minimum size=1cm
+  },
+  neuron missing/.style={
+    draw=none, 
+    scale=4,
+    text height=0.333cm,
+    execute at begin node=\color{black}$\vdots$
+  },
+}
+
+% Tikz styles for convolution
+\newcommand\numRowsK{3}
+\newcommand\numColsK{3}
+\newcommand{\K}[2]{% #1: row, #2: col
+    \edef\Kcol##1##2##3{###2}%
+    \edef\Krow##1##2##3{\noexpand\Kcol###1}%
+    \Krow
+        {1 0 1}
+        {0 1 0}
+        {1 0 1}%
+}
+
+% Tikz styles for self attention
+\definecolor{emb_color}{RGB}{252,224,225}
+\definecolor{multi_head_attention_color}{RGB}{252,226,187}
+\definecolor{add_norm_color}{RGB}{242,243,193}
+\definecolor{ff_color}{RGB}{194,232,247}
+\definecolor{conv_color}{RGB}{203,231,207}
+\definecolor{pool_color}{RGB}{220,223,240}
+\definecolor{gray_bbox_color}{RGB}{243,243,244}
+
+%-----------------------------------------------------------------------------------------------------------------------
+
+\rmfamily \pagestyle{fancy} \setcounter{secnumdepth}{4}
+\newtheorem{remark}{Remark}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{satz}{Satz}
+\newtheorem{lemma}[satz]{Lemma}
+\newtheorem{folgerung}[satz]{Folgerung}
+\theoremstyle{definition}
+\newtheorem{definition}[satz]{Definition}
+\numberwithin{equation}{section}
+\renewcommand{\proofname}{Beweis}
+
+\newboolean{english}
+\setboolean{english}{true}
+
+\newcommand{\setlanguageGerman}{\selectlanguage{ngerman}\setboolean{english}{false}}
+\newcommand{\setlanguageEnglish}{\selectlanguage{english}\setboolean{english}{true}}
+
+\include{sections/abbreviations}

@@ -1,0 +1,85 @@
+\glsresetall
+\section{Implementation}
+\label{sec:implementation}
+The goal of this chapter is to highlight some important details in the concept outlined previously. First, the general implementation of the system is discussed with an emphasis on the utilized software frameworks. This is followed by highlighting a specific code issue observed during network training. As it turns out, it is of crucial importance how the policy standard deviation is restricted.
+
+\subsection{System implementation}\label{ssec:system_implementation}
+The overall training loop of the system described in this thesis is implemented in Python, while the \gls{mcts} itself is a C++ library. Once a run is started, a neural network is initialized from random parameters and saved to disk. PyTorch is the deep learning framework chosen for this thesis because it allows seamless interoperability between Python and C++ thanks to torchscript and the libtorch C++ library \cite{paszkePyTorchImperativeStyle}. As soon as network initialization is completed, a data collector instance is constructed from a configuration file. It employs the distributed computing framework ray \cite{moritzRayDistributedFramework2018} to start multiple instances of an \gls{mcts} ROS node \cite{quigleyROSOpensourceRobot}.
+
+The \gls{mcts} loads the saved network parameters from the disk and runs the guided search until the scenario reaches a terminal condition. Care must be taken when training data is generated from different scenarios with possibly different numbers of agents. If all scenarios were chosen with equal probability for instance, the dataset would be biased towards scenarios with more agents. This is due to the trajectories of all agents being exported according to the training procedure in Section~\ref{ssec:training_loop}. The problem is resolved by sampling scenarios with probabilities that are inversely proportional to the number of agents $|\Upsilon_n|$ in the scenario. The probabilities can be obtained by first determining an unnormalized weight for a scenario $n$:
+\begin{align}\label{eq:unnormalized_probs}
+    |\Upsilon_n| \cdot w_n & =  \frac{1}{|S|} \nonumber \\
+    \llap{$\Leftrightarrow$ \qquad\quad} w_n &  =  \frac{1}{|\Upsilon_n| \cdot |S|}~.
+\end{align}
+The intuition behind Formula~\ref{eq:unnormalized_probs} is to have scenarios weights $w_n$ which result in a uniform distribution $\frac{1}{|S|}$ when multiplied by the number agents in a scenario $|\Upsilon_n|$. A valid probability distribution can then be generated through normalization of all individual weights $w_n$ by the sum of all weights $\sum_{s=1}^S w_s$:
+\begin{gather}
+    P(S_n) = \frac{w_n}{\sum_{s=1}^S w_s}~,
+\end{gather}
+where $P(S_n)$ specifies the probability of sampling scenario $n$ for data generation.
+
+During \gls{mcts} execution, the rollouts are replaced by a simulation policy which uses network evaluations to add both distribution parameters and value estimates to a node. Ego rewards obtained during execution of the search are normalized between $-1$ and $1$ using Formula~\ref{eq:reward_normalization}
+\begin{gather}\label{eq:reward_normalization}
+    \hat r = -1 + \frac{ (r - \max(r) + d) \cdot 2 }{d}~,
+\end{gather}
+where $r$ is the unnormalized reward given by the reward function in Section~\ref{sssec:scenario_rewards} and $d$ is the diameter of the reward interval. $\max(r)$ is the maximum obtainable reward. The used values can be found in Appendix~\ref{app:hyperparameter_settings}.
+
+Unlike the Python framework, the libtorch C++ library does not possess a frontend for the PyTorch distributions. Therefore all policy distributions used in this work are implemented manually using Eigen3 \cite{guennebaudEigenV32010} to keep them as lightweight as possible.  After a stage of the search has finished, the root node statistics for each agent are exported in a PyTorch archive and saved on an SSD. They constitute the training data. Once enough data for an episode has been generated, the data collector terminates the \gls{mcts} runs. Subsequently, a PyTorch dataset is constructed from the $D$ newest samples, where $D$ is the size of the replay buffer. The network is then trained with stochastic gradient descent. Because storing data and training the network comprises only a fraction of the total training time these operations are implemented in Python.
+
+If a rolling average computed from the success rate of the last three training episodes is higher than that of the previous best model, the network is saved to generate data in the next episode. When the current success rate average does not improve on the highest value, the gating test has been failed. In this case, the next batch of training experiences is still generated from the older model with the highest success rate. Nonetheless, the training proceeds with the current network and without reloading the weights.
+
+Section~\ref{sssec:progressive_widening} has established that progressive widening is done on a per-agent basis. Since the data collection phase might use scenarios with different numbers of agents, special attention has to be paid to padding the data batches. Value targets are padded using a large negative constant $-1 \cdot 10^{10}$. On one hand, this provides direct feedback through exploding loss values in the case of bugs. On the other hand, since rewards are normalized, it is easy to generate a mask for padded values.
+
+Agent actions and visitation counts are padded using zero values. To generate a mask for the policy and entropy loss (refer to Section~\ref{ssec:objective_function}), note that an exported action cannot have a visitation count of zero. Therefore generating a mask that removes all zero visitation counts can also be used to discard log-probabilities generated from padded actions. The last implementation detail worth discussing is significant enough to warrant its own section, which follows.
+
+\subsection{Restricting the policy standard deviation}\label{ssec:restricting_stddev}
+When learning the standard deviation $\sigma$ of a normal distribution in \gls{rl}, one usually proceeds as follows \cite{schulmanTrustRegionPolicy2017, raffinStableBaselines32019}:
+\begin{enumerate}
+    \item Learn the logarithm of the standard deviation $\log \sigma$ instead of restricting the learned parameter to positive ranges only.
+    \item Restrain $\log \sigma$ to be in some range, e.g. an interval between $2$ and $-20$.
+    \item Calculate $e^{\log \sigma}$ as standard deviation of the distribution.
+\end{enumerate}
+In this process, step one helps to increase training stability by allowing the learned parameter to take positive and negative values. The second step adds numerical stability to the learning by capping outliers and restricting $\log \sigma$ to prudent values. Lastly, the actual standard deviation is computed by exponentiating the learned parameter. This ensures $\sigma \geq 0$, which is needed to generate a valid normal distribution.
+
+The technique by which $\log \sigma$ is restricted is rarely specified but of critical importance. One common approach taken is to use "\emph{clamping}" to cap the network output between interval boundaries \cite{raffinStableBaselines32019}. The code snippet below implements this in PyTorch:
+\begin{lstlisting}[language=Python, deletekeywords={sum}]
+log_param_min, log_param_max = self.log_param_bounds
+log_std = torch.clamp(log_std, min=log_param_min, max=log_param_max)
+\end{lstlisting}
+\texttt{torch.clamp} simply cuts values outside the target interval off and replaces them with the minimum or maximum possible values. Another option is to use a $\tanh$ transformation to restrict the standard deviation \cite{yaratsSoftActorcriticSAC2020}:
+\begin{lstlisting}[language=Python, deletekeywords={sum}]
+log_std = torch.tanh(log_std)
+log_std_min, log_std_max = self.log_std_bounds
+log_std = log_std_min + 0.5*(log_std_max - log_std_min) * (log_std + 1)
+\end{lstlisting}
+Here the learned parameter is first constrained between $-1$ and $1$. Then $\log \sigma$ is rescaled and a bias term is added to achieve the desired interval boundaries.
+Now that both methods have been described, the question becomes: Which one to choose? This thesis uses the clamping approach motivated by its empirical performance.
+\begin{figure}
+\begin{subfigure}{\textwidth}
+  \centering
+  \scalebox{0.7}{
+  \input{images/clamped_density_maze.pdf_tex}
+  }
+  \caption{Density obtained through $\log \sigma$ clamping.}
+  \label{fig:clamped_maze_density}
+\end{subfigure}
+
+\begin{subfigure}{\textwidth}
+  \centering
+  \scalebox{0.7}{
+  \input{images/tanh_density_maze.pdf_tex}
+  }
+  \caption{Density obtained through $\log \sigma$ transformation.}
+  \label{fig:tanh_maze_density}
+\end{subfigure}
+\caption[Different versions of restricting the policy standard deviation]{Contour histograms using different techniques to restrict the standard deviation. To generate the plots, $50000$ samples were drawn from the distribution parameters produced by the same random neural network. a) uses clamping to restrict the learned log standard deviation. As a result, the random initialization leads to exploration of the whole sample space. b) uses the $\tanh$ transformation. The resulting distribution resembles a $2D$ standard normal distribution and narrowly restricts sampling around the origin.}
+\label{fig:tanh_vs_clamped_std}
+\end{figure}
+Figure~\ref{fig:tanh_vs_clamped_std} provides an explanation for the observed superiority of clamping. In the experiment, an identical neural network with random parameters is initialized. Then the distribution generated by these parameters is visualized by drawing $50000$ samples and plotting an approximate $2D$ density over the action space.
+
+Analyzing the results, it becomes immediately clear why the $\tanh$ method struggles to learn: The distribution generated is centered around the origin, but with a very narrow support. The histograms in Figure~\ref{fig:tanh_maze_density} further illustrate that values outside of the interval $[-3, 3]$ are sampled with very small probability. This is problematic, as it leaves a large amount of the action space unexplored at the start of training. Using a scaled $\tanh$ transformation to cap the $\log$ standard deviation therefore inhibits learning.
+
+Comparing the \texttt{torch.clamp} approach, it can be seen that the distribution has four modes, one in each corner of Figure~\ref{fig:clamped_maze_density}. There is however also a reasonable likelihood of generating samples from all areas of the action space. This is desirable for a random network at the start of training: It allows the algorithm to fully explore all available actions before narrowing the distribution, thereby preventing premature convergence to local optima.
+
+For the reasons elaborated on above, all experiments in the following section use clamping instead of the $\tanh$ transformation to restrict the $\log$ standard deviation.
+
+

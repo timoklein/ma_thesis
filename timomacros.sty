@@ -1,0 +1,187 @@
+\ProvidesPackage{timomacros}[2020-01-17 v0.5 own macros]
+\RequirePackage{amsmath, amssymb, amsthm}
+\RequirePackage{mathtools}
+\RequirePackage{bm}
+\RequirePackage[utf8x]{inputenc}
+\RequirePackage[T1]{fontenc}
+\RequirePackage{lmodern} % load a font with all the characters
+\RequirePackage{float}
+\RequirePackage{enumitem}
+\RequirePackage[ruled, english]{algorithm2e}
+% \RequirePackage{algorithmic}
+\RequirePackage{hyperref}
+\RequirePackage[colorinlistoftodos, english]{todonotes}
+
+% German style quotation
+\newcommand{\qm}[1]{\glqq {#1}\grqq{}}
+
+% English style quotation
+\newcommand{\qme}[1]{\grq {#1}\grq{}}
+
+% Helper commands
+\newcommand{\fns}[0]{\footnotesize}
+
+% Stats commands
+\DeclareMathOperator\var{Var}
+\DeclareMathOperator*{\iiddist}{\overset{\text{i.i.d.}}{\sim}}
+\newcommand*{\iid}{\ifmmode \text{i.i.d.} \else i.i.d. \fi}
+\newcommand{\E}[1]{\mathbb{E}_{#1}}
+\newcommand{\cov}[2]{\text{Cov}({#1, #2})}
+\newcommand*{\stdnormal}{\ifmmode \mathcal{N}(\mu, \sigma^2) \else $\mathcal{N}(\mu, \sigma^2)$\fi}
+\newcommand{\normal}[1]{\mathcal{N}(#1)}
+\newcommand{\divergence}[3]{D_{#1}(#2 \mathrel{\parallel} #3)}
+
+
+
+% Common math and optimization
+\DeclareMathOperator\sech{sech}
+\DeclareMathOperator\artanh{artanh}
+\newcommand*{\wprob}{\ifmmode \text{w.p.} \else w.p. \fi}
+\newcommand*{\st}{\ifmmode \text{s.t.} \else s.t. \fi}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\newcommand{\N}[0]{\mathbb{N}}
+\newcommand{\Z}[0]{\mathbb{Z}}
+\newcommand{\R}[1]{\mathbb{R}^{#1}}
+\newcommand{\pmat}[1]{\begin{pmatrix} #1  \end{pmatrix}}
+\newcommand*{\sprod}[3]{
+    \relax
+    \ifmmode 
+        \langle #1, #2 \rangle_{#3}
+    \else 
+        $\langle #1, #2 \rangle_{#3}$  
+    \fi}
+\newcommand*{\norm}[2]{
+    \relax
+    \ifmmode 
+        \lVert{#1}\rVert_{#2}
+    \else 
+        $\lVert{#1}\rVert_{#2}$  
+    \fi}
+\newcommand*{\sqnorm}[1]{
+    \relax
+    \ifmmode 
+    \lVert{#1}\rVert_2^2
+    \else 
+        $\lVert{#1}\rVert_2^2$  
+    \fi}
+\newcommand*{\grad}[3]{
+    \relax
+    \ifmmode 
+        \nabla_{#3} #1 ({#2}) 
+    \else 
+        $\nabla_{#3} #1 ({#2})$  
+    \fi}
+\newcommand*{\func}[3]{
+    \relax
+    \ifmmode 
+        #1: \mathbb{R}^{#2} \rightarrow \mathbb{R}^{#3} 
+    \else 
+        $#1: \mathbb{R}^{#2} \rightarrow \mathbb{R}^{#3}$  
+    \fi}
+\newcommand*{\funcC}[4]{
+    \relax
+    \ifmmode 
+        #1 \in C^{#2}(\mathbb{R}^{#3},  \mathbb{R}^{#4}) 
+    \else 
+        $#1 \in C^{#2}(\mathbb{R}^{#3},  \mathbb{R}^{#4}) $  
+    \fi}
+\newcommand*{\lev}[3]{
+    \relax
+    \ifmmode 
+        \text{lev}^{#1}_{\leq} ({#2}, {#3})
+    \else 
+        $\text{lev}^{#1}_{\leq} ({#2}, {#3})$  
+    \fi}
+\newcommand*{\levf}[1]{
+    \relax
+    \ifmmode 
+        f_{\leq}^{#1}
+    \else 
+        $f_{\leq}^{#1}$  
+    \fi}
+\newcommand{\mat}[3]{
+    \relax
+    \ifmmode
+        {#1} \in \mathbb{R}^{{#2} \times {#3}}
+    \else
+        ${#1} \in \mathbb{R}^{{#2} \times {#3}}$
+    \fi}
+\newcommand{\set}[2]{
+    \relax
+    \ifmmode
+        {#1} \subseteq \mathbb{R}^{#2}
+    \else
+        ${#1} \subseteq \mathbb{R}^{#2}$
+    \fi}
+\newcommand{\seq}[2]{
+    \relax
+    \ifmmode
+        ({#1}) \subseteq #2
+    \else
+        $({#1}) \subseteq #2$
+    \fi}
+\renewcommand{\vec}[2]{
+    \relax
+    \ifmmode
+        {#1} \in \mathbb{R}^{{#2}}
+    \else
+        ${#1} \in \mathbb{R}^{{#2}}$
+    \fi}
+    
+% Machine learning
+\DeclareMathOperator\relu{ReLU}
+\DeclareMathOperator\softmax{Softmax}
+\DeclareMathOperator\softp{Softplus}
+\DeclareMathOperator\nan{NaN}
+\DeclareMathOperator\nans{NaNs}
+
+
+% Reinforcement learning
+% Set of agents
+\newcommand*{\agentset}{\ifmmode \Upsilon  \else $\Upsilon$\fi}
+% Action space only
+\newcommand*{\actionspace}{\ifmmode \mathcal A  \else $\mathcal A$\fi}
+% Action as element of action space
+\newcommand*{\action}{\ifmmode a \in \mathcal A  \else $a \in \mathcal A$\fi}
+% Next action as element of action space
+\newcommand*{\nextaction}{\ifmmode a^\prime \in \mathcal A  \else $a^\prime \in \mathcal A$\fi}
+% State space only
+\newcommand*{\statespace}{\ifmmode \mathcal S  \else $\mathcal S$\fi}
+% State as element of state space
+\newcommand*{\state}{\ifmmode s \in \mathcal S  \else $s \in \mathcal S$\fi}
+% Next state as element of state space
+\newcommand*{\nextstate}{\ifmmode s^\prime \in \mathcal S  \else $s^\prime \in \mathcal S$\fi}
+% Transition function: P(s`|s, a)
+\newcommand*{\transitionfunc}{\ifmmode P(s^\prime|s, a)  \else $P(s^\prime|s, a)$\fi}
+\newcommand*{\jointtransitionfunc}{\ifmmode P(s^\prime|s, \mathbf a)  \else $P(s^\prime|s, \mathbf a)$\fi}
+% Transition: (s, a, s`)
+\newcommand*{\transition}{\ifmmode (s, a, s^\prime)  \else $(s, a, s^\prime)$\fi}
+\newcommand*{\jointtransition}{\ifmmode (s, \mathbf a, s^\prime)  \else $(s, \mathbf a, s^\prime)$\fi}
+% Reward function: R(s, a, s`)
+\newcommand*{\rewardfunc}{\ifmmode \mathcal R(s, a, s^\prime)  \else $\mathcal R(s, a, s^\prime)$\fi}
+\newcommand*{\jointrewardfunc}{\ifmmode \mathcal R(s, \mathbf a, s^\prime)  \else $\mathcal R(s, \mathbf a, s^\prime)$\fi}
+% MDP as 5-tuple: (S, A, P, R, y)
+\newcommand*{\mdptuple}{\ifmmode \langle \mathcal S, \mathcal A, P, \mathcal R, \gamma \rangle  \else $\langle \mathcal S, \mathcal A, P, \mathcal R, \gamma \rangle$\fi}
+% Plain policy notation
+\newcommand*{\piplain}{\ifmmode \pi ( a | s)  \else $\pi ( a | s)$\fi}
+% Optimal policy notation
+\newcommand*{\piopt}{\ifmmode \pi^* ( a | s)  \else $\pi^* ( a | s)$\fi}
+% Parameterized policy using theta
+\newcommand*{\p}{\ifmmode \pi_{\theta} ( \mathbf a| \mathbf s)  \else $\pi_{\theta} (\mathbf a| \mathbf s)$\fi}
+% Improved policy pi hat
+\newcommand*{\phat}{\ifmmode \hat{\pi} ( \mathbf a| \mathbf s)  \else $\hat{\pi} (\mathbf a| \mathbf s)$\fi}
+% Value function according to pi
+\newcommand*{\Vpi}{\ifmmode V^\pi (s)  \else $V^\pi (s)$\fi}
+% Optimal value function V*
+\newcommand*{\Vopt}{\ifmmode V^* (s)  \else $V^* (s)$\fi}
+% Estimated value function V_hat
+\newcommand*{\Vtarget}{\ifmmode \hat{V} ( \mathbf s)  \else $\hat{V} (\mathbf s)$\fi}
+% Estimated value function parameterized by theta
+\newcommand*{\Vest}{\ifmmode V_\theta (\mathbf s) \else $V_\theta (\mathbf s)$\fi}
+% plain simple Q function
+\newcommand*{\Q}{\ifmmode  Q(s,a)  \else $Q(s,a)$\fi}
+% Q according to policy p
+\newcommand*{\Qpi}{\ifmmode  Q^\pi(s,a)  \else $Q^\pi(s,a)$\fi}
+% Optimal Q
+\newcommand*{\Qopt}{\ifmmode  Q^*(s,a)  \else $Q^*(s,a)$\fi}

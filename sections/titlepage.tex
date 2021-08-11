@@ -1,0 +1,72 @@
+\begin{titlepage}
+% font / Schriftart
+%------------------	
+
+
+\begin{figure}[htbp]
+  %\centering
+  \begin{minipage}[b]{7cm}
+    \ifthenelse{\boolean{english}}{\includegraphics[height=1.8cm]{images/kit_logo_en}}{\includegraphics[height=1.8cm]{images/kit_logo_de}}
+  \end{minipage}
+  \begin{minipage}[b]{8.5cm}
+	\begin{flushright}
+
+
+    \includegraphics[height=1.8cm]{images/aifb_logo}  
+		\end{flushright}
+  \end{minipage}
+\end{figure}
+
+\vspace*{2.5cm}
+\begin{center}
+		%TODO Titel angeben
+		{\textbf{\Huge \ifthenelse{\boolean{english}}{Combining Reinforcement Learning and Search for Cooperative Trajectory Planning}{Kombination von Reinforcement Learning und Suche für kooperative Trajektorienplanung}}}
+		\vspace*{1cm}\\
+		%TODO Art der Arbeit
+		{\Large \ifthenelse{\boolean{english}}{Master Thesis}{Seminararbeit / Bachelorarbeit / Masterarbeit}}\\[1cm]
+		{\Large \ifthenelse{\boolean{english}}{by}{von}}\\[1cm]
+		%\vspace*{1cm}
+		%TODO Name des Studenten
+		{\huge Timo Klein}\\[0.5cm]
+		%TODO Studiengang des Studenten
+		{\Large \ifthenelse{\boolean{english}}{Degree Course: Economics Engineering M.Sc.}{Studiengang: Wirtschaftsingenieurwesen}}\\[0.25cm]
+		%TODO MatNr angeben
+		{\Large \ifthenelse{\boolean{english}}{Matriculation Number}{Matrikelnummer}: 2122521}\\
+		\vspace*{1.5cm}
+		{\large\ifthenelse{\boolean{english}}{
+			Institute of Applied Informatics and Formal Description Methods (AIFB)
+			\\[0.5cm]
+			KIT Department of Economics and Management}{
+			Institut für Angewandte Informatik und Formale Beschreibungsverfahren (AIFB)
+			\\[0.5cm]
+			KIT-Fakultät für Wirtschaftswissenschaften}
+		}
+	\end{center}
+	\vspace*{1.5cm}
+\Large{
+\begin{center}
+\begin{tabular}[ht]{l c l}
+	
+  %TODO Referent/-in angebenn
+  %Referent/-in sind die Professoren, die die Arbeit bewerten.
+  \ifthenelse{\boolean{english}}{Advisor}{Prüfer}: & \hfill  & Prof. Dr.-Ing. Johann Marius Zöllner \\
+  %Referent/-in sind die Professoren, die die Arbeit bewerten.
+  \ifthenelse{\boolean{english}}{Second Advisor}{Zweiter Prüfer}: & \hfill  & Prof. Dr. Andreas Oberweis \\
+  %TODO Betreuer/-in angeben
+  \ifthenelse{\boolean{english}}{Supervisor}{Betreuer}: & \hfill  & M.Sc. Karl Kurzer \\
+  %TODO Abgabedatum angeben
+  \ifthenelse{\boolean{english}}{Submitted}{Eingereicht am}: & \hfill  & \today\\
+ 
+\end{tabular}
+\end{center}
+
+}
+
+
+%\include{titel}
+  \vfill
+	
+	\small{ KIT -- \ifthenelse{\boolean{english}}{The Research University in the Helmholtz Association}{Die Forschungsuniversität in der Helmholtz-Gemeinschaft}
+} \hfill
+	\small{\textbf{\url{www.kit.edu}} }
+\end{titlepage}

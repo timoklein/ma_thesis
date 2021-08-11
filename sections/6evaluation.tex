@@ -1,0 +1,635 @@
+\glsresetall
+\section{Evaluation}\label{sec:evaluation}
+To evaluate the proposed approach, two scenarios are used to train models: Scenario 06 (Figure~\ref{fig:sc06}), where two agents have to merge, and scenario 08 (Figure~\ref{fig:sc08}), where two agents have to pass a bottleneck. Scenario 06 is easier and allows multiple ablation studies whereas scenario 08 can be considered more challenging\footnote{Why that is the case is disclosed in Sections~\ref{ssec:eval_baseline} and~\ref{ssec:eval_vs_mcts}.}. It should therefore provide more insights into the potential of the guided search algorithm. After introducing a baseline used for comparison, the section headers serve as guiding questions for the studies conducted in the body.
+
+\subsection{Evaluation Metrics}\label{ssec:evaluation_metrics}
+The algorithm described in the previous sections is empirically analyzed according to one main metric: the success rate. A scenario run is deemed successful if no collisions or invalid states occur. They are denoted with indicator variables $I_{\text{collision}}$ for a collision and $I_{\text{invalid}}$ for an invalid state. Recall that a state is invalid if the vehicle is not on the drivable area (refer to Section~\ref{sssec:scenario_rewards}). Additionally, if the algorithm was unable to generate actions for each agent, the run is stopped with an indicator $I_{\text{unable\_continue}}$. Therefore the success of a single run can be stated in Definition~\ref{eq:scenario_success}:
+\begin{gather}\label{eq:scenario_success}
+        I_{\text{success}} = \max (1 - I_{\text{collision}} - I_{\text{invalid}} - I_{\text{unable\_continue}}, 0)~.
+\end{gather}
+The indicator variable success is thus one if neither of the aforementioned negative events occurs. If a collision, invalid state or failed planning attempt has taken place, it is zero. Aggregating the individual scenario successes into the success rate over $N$ evaluations can be written as
+\begin{gather}
+    P_{\text{success}} = \frac{1}{N} \sum_{n=1}^N I^n_{\text{success}}~,
+\end{gather}
+where $P_{\text{success}}$ is the success rate and $I^n_{\text{success}}$ is the indicator of success for the $n$-th run. 
+
+In this place it is worth mentioning that in \gls{rl} usually the episode reward is used to determine the learning progress. For the multi-agent driving scenarios evaluated in this thesis, the normalized cooperative reward $R$ is given as
+\begin{gather}
+    R = \frac{1}{T} \sum_{t=1}^T \frac{1}{|\Upsilon|} \sum_{i=1}^\Upsilon r_{i, t}~,
+\end{gather}
+where $r_{i, t}$ is the reward of agent $i$ at time step $t$. $r_{i, t}$ is summed over all agents and time steps in the scenario before being averaged over the number of steps $T$ in the episode as well as the agent count $|\Upsilon|$. As will be discussed in Sections~\ref{ssec:eval_vs_mcts} and ~\ref{ssec:interpretation}, using the normalized cooperative reward as measure of success is problematic.
+
+Another metric used in the subsequent evaluation is the percentage of times an agent's desire has been fulfilled. Recall from Section~\ref{ssec:environment} that each agent has a goal state consisting of a target lane and a target velocity in longitudinal direction. How often this goal state is reached for a total number of $N$ runs can then be used as an alternative measure of success:
+\begin{gather}\label{eq:desire_fulfilled}
+    P_{\text{desire\_fulfilled}} = \frac{1}{N} \sum_{n=1}^N I^n_{\text{desire\_fulfilled}}~,
+\end{gather}
+where $I^n_{\text{desire\_fulfilled}}$ indicates that an agent's desire has been reached in the $n$-th run.
+
+To facilitate reproducibility of the results shown in the following sections, the hyperparameters for the evaluation and training runs are stated in Appendix~\ref{app:hyperparameter_settings}. They are kept fixed across all runs unless explicitly stated otherwise. All training runs use the same network architecture which is defined in Appendix~\ref{app:network_architecture}. The seeds to initialize the random number generators for training and evaluation are specified in Appendix~\ref{app:training_seeds} and~\ref{app:evaluation_seeds}, respectively. When a trained model is evaluated, no learning occurs and its weights are kept fixed.
+
+Now that the metric for evaluation and the training settings have been discussed, the following sections empirically analyze the capabilities of the proposed algorithm.
+
+\subsection{The baseline}\label{ssec:eval_baseline}
+When evaluating any method, it is important to select a competitive baseline as comparison. As such, the \gls{mcts} developed by \cite{kurzerDecentralizedCooperativePlanning2018} is chosen when evaluating the proposed approach. It uses several heuristics to improve its performance in low iteration settings. This is in contrast to the network-guided search which learns from tabula rasa. In the following, these heuristics are explained.
+
+To generate new actions for progressive widening, Section~\ref{sssec:progressive_widening} refers to uniform sampling as the simplest strategy. The baseline however uses \emph{Blind Values} as an orthogonal approach to produce guided actions \cite{couetouxImprovingExplorationUpper2012, kurzerDecentralizedCooperativePlanning2018}. Action generation proceeds as follows: For each actually chosen action, first a set of candidate actions is sampled uniformly from the action space. Their blind value is calculated subsequently. It can be seen as a scoring function utilizing the statistics of already explored actions. Together with a distance measure the statistics provide an attractiveness score \cite{kurzerDecentralizedCooperativePlanning2018}. The value is high for actions far from already selected ones at the beginning of the search. With higher visitation counts, actions with higher UCT values are preferred. Blind values thus weigh exploration versus exploitation for each actually expanded action \cite{kurzerDecentralizedCooperativePlanning2018}.
+
+As a second heuristic that is particularly useful in low iteration settings, the baseline adds a number of pre-calculated maneuvers to each newly expanded node. These maneuvers are generated by calculating actions which conform to previously determined semantic action groups \cite{kurzerDecentralizedCooperativePlanning2018}. An example action from these groups is for instance a lane change to the left while decelerating. To calculate values for the chosen maneuvers, the \gls{mcts} relies on the scenario specification \cite{kurzerDecentralizedCooperativePlanning2018}. The number of actions added this way is dependent on the search depth: If the newly expanded node is close to the root of the tree, nine pre-calculated maneuvers are added. For nodes deeper in the tree, only five basic actions are generated \cite{kurzerDecentralizedCooperativePlanning2018}.
+
+What happens if the predetermined driving maneuvers in the last paragraph do not conform to the action bounds? In this case, the baseline \gls{mcts} \emph{ignores the constraints}. As a result, it is able to select actions which are not accessible to the \gls{rl} algorithm. Through the $\tanh$ squashed normal distribution introduced in Section~\ref{ssec:action_bounds}, the approach proposed by this thesis cannot violate the action bounds.
+
+To make results comparable, actions are bounded for the baseline in the following evaluation. Additionally, ego reward normalization according to Equation~\ref{eq:reward_normalization} is added to produce equally scaled values. Table~\ref{tab:baseline_performance} shows how these modifications alter the baseline results. Enforcing action bounds has a negligible effect on the success rate. Interestingly, the ego reward normalization improves the baseline compared to using unnormalized rewards. A variant of the \gls{mcts} without pre-calculated maneuvers is also evaluated. Without them, the baseline is not able to solve scenarios 02, 05, 06, and 07 at all. This highlights its reliance on heuristics in low iteration settings.
+
+Due to its higher success rate and comparable reward values over the unmodified baseline, the \textbf{Bound \& Norm} variant from Table~\ref{tab:baseline_performance} is chosen for all further evaluations. As scenarios, 06 is selected as it is solvable easily by the \gls{mcts}. This allows an evaluation of whether the guided search is able to recover the pre-calculated heuristic maneuvers. As another scenario, 08 is chosen. Here the heuristic actions are insufficient and cannot solve the task, as evidenced by the \gls{mcts} needing more iterations.
+
+With the baseline being introduced, the focus of this work now shifts towards evaluation of the guided search approach. A starting point is a qualitative overview assessing whether the network is able to successfully prune the sample space.
+\begin{landscape}
+\begin{table}[h]
+ \centering
+ \scalebox{0.9}{
+  \begin{tabular}{lcccccccccc}
+    \toprule
+     & \multicolumn{2}{c}{\textbf{Base}} & \multicolumn{2}{c}{\textbf{Norm}} & \multicolumn{2}{c}{\textbf{Bound}} &  \multicolumn{2}{c}{\textbf{Bound \& Norm}} & \multicolumn{2}{c}{\textbf{No pre-selection}} \\
+    \textbf{Iterations} & $100$ & $200$ & $100$ & $200$ & $100$ & $200$ & $100$ & $200$ & $100$ & $200$  \\
+    \textbf{Scenario} & & & & & & & & & &  \\
+    \midrule
+    Scenario 01 & $0.99$ & $0.98$ & \cellcolor{lightkit}$1.00$ & $0.98$ & $0.99$ & $0.98$ & \cellcolor{lightkit}$1.00$ & $0.98$ & \cellcolor{lightkit}$1.00$ & \cellcolor{lightbrown}$1.00$ \\
+    Scenario 02 & $0.80$ & $0.82$ & \cellcolor{lightkit}$0.97$ & \cellcolor{lightbrown}$0.96$ & $0.80$ & $0.82$ & \cellcolor{lightkit}$0.97$ & \cellcolor{lightbrown}$0.96$ & $0.00$ & $0.00$ \\
+    Scenario 03 & \cellcolor{lightkit}$1.00$ & \cellcolor{lightbrown}$1.00$ & \cellcolor{lightkit}$1.00$ & \cellcolor{lightbrown}$1.00$ & \cellcolor{lightkit}$1.00$ & \cellcolor{lightbrown}$1.00$ & \cellcolor{lightkit}$1.00$ & \cellcolor{lightbrown}$1.00$ &  \cellcolor{lightkit}$1.00$ & \cellcolor{lightbrown}$1.00$ \\
+    Scenario 04 &  $0.98$ & \cellcolor{lightbrown}$1.00$ & $0.99$ & $0.99$ &  $0.98$ & \cellcolor{lightbrown}$1.00$ & $0.99$ & $0.99$ & \cellcolor{lightkit}$1.00$ & \cellcolor{lightbrown}$1.00$ \\
+    Scenario 05 & $0.91$ & $0.95$ & $0.99$ & $0.98$ & $0.92$ & $0.93$ & \cellcolor{lightkit}$1.00$ & \cellcolor{lightbrown}$0.99$ & $0.00$ & $0.00$ \\
+    Scenario 06 & $0.97$ & $0.97$ & \cellcolor{lightkit}$0.99$ & \cellcolor{lightbrown}$1.00$ & $0.97$ & $0.99$ & \cellcolor{lightkit}$0.99$ & \cellcolor{lightbrown}$1.00$ & $0.00$ & $0.00$ \\
+    Scenario 07 & \cellcolor{lightkit}$0.08$ & \cellcolor{lightbrown}$0.12$ & $0.07$ & $0.11$ & \cellcolor{lightkit}$0.08$ & \cellcolor{lightbrown}$0.12$ & $0.07$ & $0.11$ & $0.00$ & $0.00$ \\
+    Scenario 08 & $0.17$ & $0.69$ & $0.20$ & \cellcolor{lightbrown}$0.79$ & $0.17$ & $0.69$ & $0.20$ & \cellcolor{lightbrown}$0.79$ & \cellcolor{lightkit}$0.39$ & $0.49$ \\
+    \midrule
+    \textbf{Mean} & $0.7375$ & $0.8163$ & $0.7763$ & $0.8513$  & $0.7388$ & $0.8163$ &  \cellcolor{lightkit}$0.7775$ & \cellcolor{lightbrown}$0.8525$  & $0.4238$ & $0.4363$  \\
+    \bottomrule
+  \end{tabular}
+  }
+\caption[Baseline performance for $100$ and $200$ iterations]{Performance of the baseline \gls{mcts} for $100$ and $200$ iterations. \textbf{Norm} corresponds to normalized ego rewards according to Equation~\ref{eq:reward_normalization}. \textbf{Bound} enforces action bounds in $[-5, 5]$. The combination is denoted as \textbf{Bound \& Norm}. \textbf{No pre-selection} shows performance without expanding pre-calculated maneuvers. The best performing algorithms are shown in cyan ($100$ iterations) and brown ($200$ iterations). Ego reward normalization improves the baseline results. Not using pre-selected actions yields a performance drop-off. For all following comparisons, the \textbf{Bound \& Norm} baseline version is chosen as it performs best and produces comparable reward values.}
+\label{tab:baseline_performance}
+\end{table}
+\end{landscape}
+
+
+\subsection{Does the model work as intended?}\label{ssec:eval_pruning}
+The goal of this thesis as stated in the introduction is to improve the \gls{mcts} sample efficiency through guiding the search with learned knowledge. A simple, yet effective way to qualitatively verify whether the desired phenomenon occurs or not is to visualize the network distributions.
+
+Figure~\ref{fig:sample_space_pruning_example_06} contrasts an agent's view in scenario 06 with the output distribution of the neural network. 
+\begin{figure}
+\begin{subfigure}{\textwidth}
+  \centering
+  \scalebox{0.7}{
+  \input{images/sc06_agent0_example_maps.pdf_tex}
+  }
+  \caption{Agent zero visual map.}
+  \label{fig:sc06_example_maps}
+\end{subfigure}
+
+\begin{subfigure}{\textwidth}
+  \centering
+  \scalebox{0.7}{
+  \input{images/sc06_agent0_example_dists.pdf_tex}
+  }
+  \caption{Agent zero output distribution. $x$-axis refers to longitudinal velocity change in $m/s$. $y$-axis is lateral velocity change in $m/s$.}
+  \label{fig:sc06_example_dists}
+\end{subfigure}
+\caption[Action space pruning for scenario 06]{First three steps of scenario 06 for agent zero. In (a), the perceived visual maps are shown. It can be seen how the agent is approaching obstacles on its lane. (b) shows the distributions produced by the network for a \gls{gmm} with $3$ components. $20000$ samples are drawn to visualize the distributions. The model effectively biases the action space. The actions preferred by the network can be interpreted as decelerated lane change to the left.}
+\label{fig:sample_space_pruning_example_06}
+\end{figure}
+The visual maps in Subplot~\ref{fig:sc06_example_maps} depict the situation: Agent zero approaches a number of obstacles on its current lane and must merge into the middle lane to avoid a crash. At the same time, agent one can be seen entering the images from above. It also desires to merge into the center.
+
+The corresponding network distributions are shown below in Figure~\ref{fig:sc06_example_dists}. It can be seen how the \gls{gmm} effectively prunes all actions in the sample space which correspond to driving to the right. As this would lead to either driving off the road or colliding with an obstacle, the network guides the \gls{mcts} as intended. Additionally, the network shows a preference for slowing down when approaching the obstacle in the first plot of~\ref{fig:sc06_example_dists}. After that, actions are sampled over the whole longitudinal range. Through this, the agent is able to avoid the other vehicle by either accelerating or decelerating. The latter two visualizations in Graphic~\ref{fig:sc06_example_dists} indicate that the network still prefers deceleration.
+
+A less dramatic example of the model's prediction of the action space is shown in Figure~\ref{fig:sample_space_pruning_example_10}.
+\begin{figure}
+\begin{subfigure}{\textwidth}
+  \centering
+  \scalebox{0.7}{
+  \input{images/sc10_agent0_example_maps.pdf_tex}
+  }
+  \caption{Agent zero visual map.}
+  \label{fig:sc10_example_maps}
+\end{subfigure}
+
+\begin{subfigure}{\textwidth}
+  \centering
+  \scalebox{0.7}{
+  \input{images/sc10_agent0_example_dists.pdf_tex}
+  }
+  \caption{Agent zero output distribution. $x$-axis refers to longitudinal velocity change in $m/s$. $y$-axis is lateral velocity change in $m/s$.}
+  \label{fig:sc10_example_dists}
+\end{subfigure}
+\caption[Action space pruning for scenario 08]{First three steps of scenario 08 for agent zero. In (a), the agent is approaching the bottleneck while noticing the other vehicle. (b) The network distribution biases sampling towards a slight left turn to avoid the obstacles. To avoid a collision with the simultaneously merging other agent, all longitudinal actions are still allowed. $20000$ samples are drawn to visualize the distributions.}
+\label{fig:sample_space_pruning_example_10}
+\end{figure}
+Here agent zero has to avoid obstacles on both lanes as well as another vehicle while driving into the bottleneck. The corresponding maps are depicted in Illustration~\ref{fig:sc10_example_maps}. Note that scenario 08 is more narrow compared to scenario 06: It only has two lanes instead of three.
+
+The network distributions visualized in Figure~\ref{fig:sc10_example_dists} show a slight preference towards driving left. This is needed to avoid the obstacles. However, both acceleration and deceleration are permitted with no obvious inclination visible. The agent therefore stays flexible and can avoid the other vehicle by either slowing down or accelerating.
+
+To further evaluate the proposed approach qualitatively, Figure~\ref{fig:trajectories_sc10} visualizes $20$ trajectories for each agent in scenario 08.
+\begin{figure}
+\begin{subfigure}{\textwidth}
+  \centering
+  \scalebox{0.7}{
+  \input{images/trajectories_agent0.pdf_tex}
+  }
+  \caption{Agent zero trajectories.}
+  \label{fig:trajectories_agent0}
+\end{subfigure}
+
+\begin{subfigure}{\textwidth}
+  \centering
+  \scalebox{0.7}{
+  \input{images/trajectories_agent1.pdf_tex}
+  }
+  \caption{Agent one trajectories.}
+  \label{fig:trajectories_agent1}
+\end{subfigure}
+\caption[Agent trajectories for scenario 08]{$20$ trajectories using $100$ iterations for each agent in scenario 08. Seeds are fixed, resulting in the same starting positions (denoted as red dots). Guided search is using a \gls{gmm} with three components. The plots show how both agents are able to navigate through the bottleneck without colliding more often when using the guided search. This contrasts with the pure \gls{mcts} approach, where the vehicles crash when driving into the center more regularly. }
+\label{fig:trajectories_sc10}
+\end{figure}
+$100$ \gls{mcts} iterations are used for both the baseline as well as the guided search. The seeds are kept fixed such that the starting positions are the same for both approaches. They are marked with red dots. Obstacle positions and lane width are not randomized for visualization purposes.
+
+Both plots show immediately how the learning based approach completes more runs than the baseline \gls{mcts}. The pair of agents passes through the middle while at the same time avoiding a collision. Their trajectories are both close to the center line between the lanes, indicating that they pass the bottleneck consecutively.
+
+On the other hand, Figure~\ref{fig:trajectories_agent0} already shows clearly how agent zero is not able to avoid the obstacles and the other agent at the same time. Almost half of its trajectories end in the area to the left of the first obstacle. A pass of the bottleneck only succeeds four times for the baseline.
+
+The visualizations in this section have shown that the network is able to successfully guide the search. Next, the choice of \gls{mcts} selection policy is discussed.
+
+
+\subsection{Which selection policy to choose?}\label{ssec:eval_of_final_selection}
+In Section~\ref{sssec:uct}, two strategies for selecting the action to be executed in the environment are introduced: selection of the action with the highest visitation count and selection of the action with the highest action value. The choice in the \gls{uct} algorithm is usually the former \cite{browneSurveyMonteCarlo2012}.
+
+Which strategy is best for cooperative autonomous driving is not immediately obvious. Therefore a short empirical evaluation is conducted to find the best approach. 
+\begin{figure}[h]
+	\centering
+	\captionsetup{justification=centering}
+	\scalebox{0.9}{
+    \input{images/sc06_final_selection_success.pdf_tex}
+    }
+	\caption[Training success for different selection policies]{Training success in scenario 06 using different \gls{mcts} selection policies. Both runs use $50$ iterations and the same three seeds. Selecting the action with the highest action value yields a higher success rate.}
+\label{fig:final_selection_shaded}
+\end{figure}
+Figure~\ref{fig:final_selection_shaded} shows the training progress of both selection strategies in scenario 06 for $50$ iterations. In contrast to the literature \cite{browneSurveyMonteCarlo2012}, selecting the action with the highest action value seems to outperform selecting the most visited action.
+
+\begin{figure}[h]
+	\centering
+	\captionsetup{justification=centering}
+	\scalebox{0.9}{
+    \input{images/sc06_selection_success_matrix.pdf_tex}
+    }
+	\caption[Evaluation success for different selection policies]{Training success in scenario 06 using different \gls{mcts} selection policies. Both models are trained using $50$ iterations. Selecting the action with the highest action value yields a higher success rate for lower iterations. Results are averaged for three models.}
+\label{fig:final_selection_matrix}
+\end{figure}
+Matrix~\ref{fig:final_selection_matrix} further examines the learned models in an evaluation setting.
+Overall, selecting the action with the maximum action value outperforms selection based on visitation counts with a mean success rate of $0.7686$ to $0.6971$. The difference mainly stems from low iteration settings, particularly for $5$, $10$ and $50$ iterations. For higher iteration values as well as $25$ iterations, the maximum visitation selection has a marginally higher success rate. Interestingly, the baseline is stronger than both learned models. Its high success percentage using just $5$ iterations confirms that the heuristic maneuvers are good enough to solve some scenarios outright.
+
+\begin{table}[h]
+ \centering
+ \scalebox{0.8}{
+  \begin{tabular}{llcccccccc}
+    \toprule
+    & \textbf{Iterations} & $5$ & $10$ & $25$ & $50$ & $100$ & $200$ & $400$ & \textbf{Mean}\\
+    \textbf{Selection} & \textbf{Metric} & & & & & & & \\
+    \midrule
+    \multirow{3}{*}{\textbf{Max value}} & \textbf{Success} & \cellcolor{lightkit}$0.3967$  & \cellcolor{lightkit}$0.5533$  &  $0.6767$  &\cellcolor{lightkit}$0.8467$  & \cellcolor{lightkit}$0.9567$  & $0.9700$  &   $0.9800$ & \cellcolor{lightkit}$\mathbf{0.7686}$ \\
+    & \textbf{Reward} & \cellcolor{lightkit}$0.2213$ & \cellcolor{lightkit}$0.2366$ & \cellcolor{lightkit}$0.2554$  & \cellcolor{lightkit}$0.2738$ & \cellcolor{lightkit}$0.2905$ & \cellcolor{lightkit}$0.2951$ & \cellcolor{lightkit}$0.3008$ & \cellcolor{lightkit}$\mathbf{0.2676}$ \\
+    & \textbf{Desire} & $0.0000$  & $0.0000$  &  $0.0000$ &  $0.0000$ & \cellcolor{lightkit}$0.0033$  &  \cellcolor{lightkit}$0.0033$ & $0.0033$ & $\mathbf{0.0014}$ \\
+    \multirow{3}{*}{\textbf{Max visits}} & \textbf{Success}  &   $0.1300$ &  $0.4200$  & \cellcolor{lightkit}$0.6900$    &  $0.7433$  &  $0.9233$  & \cellcolor{lightkit}$0.9833$  & \cellcolor{lightkit}$0.9900$ & $\mathbf{0.6971}$ \\
+    & \textbf{Reward} &  $0.1514$  &  $0.2104$  &  $0.2511$ &  $0.2629$ &   $0.2865$ & $0.2942$  & $0.3001$ & $\mathbf{0.2509}$ \\
+    & \textbf{Desire} & $0.0000$  & $0.0000$  &  $0.0000$  &  $0.0000$ &  $0.0000$  &   $0.0000$ & \cellcolor{lightkit}$0.0200$ & \cellcolor{lightkit}$\mathbf{0.0029}$ \\
+    \bottomrule
+  \end{tabular}
+  }
+\caption[Final selection performance in scenario 06]{Performance of different selection policies in scenario 06. Using the maximum action value as criterion outperforms selecting the most visited action in four out of seven settings. Final selection based on visitation counts has a slightly higher success rate for $25$, $200$ and $400$ iterations.}
+\label{tab:selection_performance}
+\end{table}
+The difference between both guided search models is expounded by Table~\ref{tab:selection_performance}. In addition to the higher average success rate, maximum value selection also has the highest cooperative reward values for each iteration setting. As the number of iterations increases, the difference between both models narrows. For the rate of fulfilled desires, both maximum action value and maximum visitation count are close to zero for all settings.
+
+Now that the choice of final selection policy has been evaluated, the next section discusses the performance of guided search versus the baseline in detail. Due to its higher mean success rate, the maximum action value policy is chosen for all following evaluations.
+
+
+\subsection{How well does the learned model perform versus pure MCTS?}\label{ssec:eval_vs_mcts}
+The success rate visualization of different selection policies in the last section (Figure~\ref{fig:final_selection_matrix}) shows the baseline outperforming the learned models. This raises an interesting question: Are there scenarios where the guided search exceeds the success rate of the baseline and vice versa?
+
+Looking at the training success in Plot~\ref{fig:train_success_shaded} first, one can see how for scenario 06 the model is able to approximate the baseline performance only late during the run. 
+\begin{figure}[h]
+	\centering
+	\captionsetup{justification=centering}
+	\scalebox{0.9}{
+    \input{images/sc06_sc10_train_shaded.pdf_tex}
+    }
+	\caption[Training plots for different scenarios]{Training progress for scenarios 06 and 08. Models are trained over three seeds using $200$ iterations. Error bands show one standard deviation. The success rate of the pure \gls{mcts} baseline for the same number of iterations is shown as dotted line.}
+\label{fig:train_success_shaded}
+\end{figure}
+This is not surprising because the baseline completely solves the task for $200$ iterations. For scenario 08, the guided search exceeds the performance of the \gls{mcts} at around episode $65$ and continues to improve upon it.
+
+A closer look at Table~\ref{tab:sc10_performance} confirms the hypothesis for scenario 08: The learned models guide the search effectively, yielding a higher success and desires fulfilled rate than the baseline in all iteration settings.
+\begin{table}[h]
+ \centering
+ \scalebox{0.8}{
+  \begin{tabular}{llcccccccc}
+    \toprule
+    & \textbf{Iterations} & $5$ & $10$ & $25$ & $50$ & $100$ & $200$ & $400$ & \textbf{Mean}\\
+    \textbf{Model} & \textbf{Metric} & & & & & & \\
+    \midrule
+    \multirow{3}{*}{\textbf{GMM 3}} & \textbf{Success} & \cellcolor{lightkit}$0.3000$ & \cellcolor{lightkit}$0.4967$ & \cellcolor{lightkit}$0.6833$ & \cellcolor{lightkit}$0.8267$ & \cellcolor{lightkit}$0.8300$ & \cellcolor{lightkit}$0.9433$ & \cellcolor{lightkit}$0.9500$ & \cellcolor{lightkit}$\mathbf{0.7186}$ \\
+    & \textbf{Reward} & $0.2779$ & $0.2954$ & $0.3119$ & $0.3205$ & $0.3276$ & $0.3341$ & $0.3367$ & $\mathbf{0.3149}$  \\
+    & \textbf{Desire} & \cellcolor{lightkit}$0.0067$ & \cellcolor{lightkit}$0.0200$ & \cellcolor{lightkit}$0.0567$ & \cellcolor{lightkit}$0.1767$ & \cellcolor{lightkit}$0.1333$ & \cellcolor{lightkit}$0.2900$ & \cellcolor{lightkit}$0.3833$ & \cellcolor{lightkit}$\mathbf{0.1524}$ \\
+    \multirow{3}{*}{\textbf{Baseline}} & \textbf{Success} & $0.0200$ & $0.0100$ & $0.0200$ & $0.0900$ & $0.2000$ & $0.7900$ & $0.8700$ & $\mathbf{0.2857}$ \\
+    & \textbf{Reward} & \cellcolor{lightkit}$0.6738$ & \cellcolor{lightkit}$0.6430$ &  \cellcolor{lightkit}$0.6404$ & \cellcolor{lightkit}$0.6096$ & \cellcolor{lightkit}$0.6145$ & \cellcolor{lightkit}$0.6255$ & \cellcolor{lightkit}$0.6238$ & \cellcolor{lightkit}$\mathbf{0.6330}$  \\
+    & \textbf{Desire} & $0.0000$ & $0.0100$ & $0.0000$ & $0.0000$ & $0.0002$ & $0.0002$ & $0.1000$ & $\mathbf{0.0214}$ \\
+    \bottomrule
+  \end{tabular}
+  }
+\caption[Scenario 08 performance versus the baseline]{Performance of the \gls{gmm} $3$ model versus the baseline in scenario 08. The best value is shaded in cyan. Using guided search outperforms the pure \gls{mcts} baseline in both success and desires fulfilled percentage. The difference is particularly stark in low iteration settings. It is noteworthy that the \gls{mcts} consistently produces runs with higher reward despite a lower success rate. For the guided search, the results of three models are averaged.}
+\label{tab:sc10_performance}
+\end{table}
+The difference is particularly noticeable below $200$ iterations. At $100$ \gls{mcts} traces, the guided search succeeds in $83.00 \%$ of runs compared to only $20.00 \%$ for the baseline. Starting at $200$ iterations, the success rate for the baseline makes a jump and closes the gap between both approaches. Using a learned network however is still superior, which is also reflected in terms of the average success rate at $0.7186$ compared to $0.2857$.
+
+The results described above also transfer to the rate of fulfilled desires. This should come as no surprise, as an agent is only able to reach its target state if it stays on the road and does not crash. The overall average rate of desires fulfilled across all iterations is $0.1524$ for the guided search versus $0.0214$ for the baseline.
+
+Interestingly, the results of the previously examined evaluation metrics do not carry over to the normalized cooperative reward. Here the baseline strongly outperforms the guided search by more than a factor of $2 \times$ on average. The results for $5$ iterations especially raise questions. At this setting, the baseline achieves its highest cooperative reward despite a success rate of only $2 \%$ and no desires fulfilled.
+
+The outcomes are flipped regarding the detailed evaluation results of scenario 06 in Table~\ref{tab:sc06_performance}. Here the baseline posts stronger results compared to the guided search in all iteration settings.
+\begin{table}[h]
+ \centering
+ \scalebox{0.8}{
+  \begin{tabular}{llcccccccc}
+    \toprule
+    & \textbf{Iterations} & $5$ & $10$ & $25$ & $50$ & $100$ & $200$ & $400$ & \textbf{Mean}\\
+    \textbf{Model} & \textbf{Metric} & & & & & & & \\
+    \midrule
+    \multirow{3}{*}{\textbf{GMM 3}} & \textbf{Success} &  $0.4367$ &  $0.5733$ & $0.7133$  & $0.8533$  & $0.9467$  & $0.9900$  & $0.9933$ & $\mathbf{0.7867}$ \\
+    & \textbf{Reward} & $0.2168$  &  $0.2345$ & $0.2564$  &  $0.2755$ & $0.2901$  & $0.2986$  & $0.3045$ & $\mathbf{0.2681}$ \\
+    & \textbf{Desire} & $0.0000$  &  $0.0000$ & $0.0000$  &  $0.0000$ & $0.0000$  & $0.0000$  & $0.0000$ & $\mathbf{0.0000}$ \\
+    \multirow{3}{*}{\textbf{Baseline}} & \textbf{Success}  & \cellcolor{lightkit}$0.8700$  & \cellcolor{lightkit}$0.9600$ &  \cellcolor{lightkit}$1.0000$   &  \cellcolor{lightkit}$0.9900$  & \cellcolor{lightkit}$0.9900$  &  \cellcolor{lightkit}$1.0000$ & \cellcolor{lightkit}$1.0000$ & \cellcolor{lightkit}$\mathbf{0.9729}$ \\
+    & \textbf{Reward} & \cellcolor{lightkit}$0.5798$  & \cellcolor{lightkit}$0.4976$  & \cellcolor{lightkit}$0.4943$  & \cellcolor{lightkit}$0.4633$ & \cellcolor{lightkit}$0.4791$  & \cellcolor{lightkit}$0.5126$ & \cellcolor{lightkit}$0.5157$ & \cellcolor{lightkit}$\mathbf{0.5060}$ \\
+    & \textbf{Desire} &  $0.0000$ & \cellcolor{lightkit}$0.0200$ & \cellcolor{lightkit}$0.0100$  & \cellcolor{lightkit}$0.0300$ &  $0.0000$  &  $0.0000$  &  $0.0000$ & \cellcolor{lightkit}$\mathbf{0.0086}$ \\
+    \bottomrule
+  \end{tabular}
+  }
+\caption[Scenario 06 performance versus the baseline]{Performance of the \gls{gmm} $3$ model versus the baseline in scenario 06. The best value is denoted in cyan. Pure \gls{mcts} outperforms the $200$ iteration model in all regards. The difference is particularly noteworthy in medium iteration settings ($10, 25, 50, 100$).} Three models are averaged for the guided search.
+\label{tab:sc06_performance}
+\end{table}
+$25$ iterations are already enough for it to solve the task with $100\%$ or $99\%$ success. This is consistent with the findings of Section~\ref{ssec:eval_baseline}, which report that the pre-calculated maneuvers are enough to succeed in scenario 06. While the learned model is able to recover the knowledge added through the heuristic, it needs $200$ iterations to do so.
+
+The results described for the success rate also carry over to the other evaluation metrics. It is noteworthy that neither the baseline nor the guided search are able to achieve a percentage of desires fulfilled higher than $3\%$. As for the cooperative reward, the baseline substantially outperforms the guided search similar to scenario 08. However, the results fluctuate without apparent relationship to the success rate.
+\begin{table}[h]
+ \centering
+ \scalebox{0.9}{
+  \begin{tabular}{lcccc}
+    \toprule
+    \textbf{Model} & Runs & Iterations & Success & Wall clock \\
+    \midrule
+    GMM 3 & $100$ & $50$ & $0.8400$ & $49s$ \\
+    Baseline & $100$ & $400$ & $0.8700$ & $57s$ \\
+    \bottomrule
+  \end{tabular}
+  }
+\caption[Scenario 08 wall clock time performance]{The guided search approach is competitive with the baseline using eight times less iterations and $8s$ less wall clock time.}
+\label{tab:wall_clock_performance_sc08}
+\end{table}
+Another important measure to look at --- particularly important for potential real-world deployment --- is the wall clock time. Tables~\ref{tab:wall_clock_performance_sc08} and~\ref{tab:wall_clock_performance_sc06} report the results. In scenario 08, the guided search achieves a similar success rate to the baseline with $8 \times$ less iterations. Due to the reduced number of planning traces, it is competitive in terms of wall clock time and even slightly faster. On scenario 06 in comparison, the learned model needs $100$ iterations to be as successful as the plain \gls{mcts}\footnote{The comparison is made between values within tables. The wall clock time between tables is not comparable due to different background workloads on the servers.}.
+\begin{table}[h]
+ \centering
+ \scalebox{0.9}{
+  \begin{tabular}{lcccc}
+    \toprule
+    \textbf{Model} & Runs & Iterations & Success & Wall clock \\
+    \midrule
+    GMM 3 & $100$ & $100$ & $0.9900$ & $2m43s$ \\
+    Baseline & $100$ & $100$ & $0.9900$ & $4s$ \\
+    \bottomrule
+  \end{tabular}
+  }
+\caption[Scenario 06 wall clock time performance]{The guided search approach performs the same in terms of success percentage compared to the baseline. It requires the same number of iterations which results in non-competitive wall clock time due to the slowness of network evaluations.}
+\label{tab:wall_clock_performance_sc06}
+\end{table}
+This results in planning that is orders of magnitude slower than the baseline. The reason for these findings lies in the computational cost of network evaluations. Profiling the code reveals that the guided search spends around $48\%$ of its runtime performing neural network inference.
+
+Lastly, Section~\ref{ssec:network_architecture} describes how the networks can use the imperfect information gained from only one agent's point of view to plan for other agents as well. The results for the corresponding evaluations are visualized in Figures~\ref{fig:sc_10_vs_baseline} and~\ref{fig:sc_06_vs_baseline}.
+\begin{figure}
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \scalebox{0.5}{
+  \input{images/sc06_pov_success_matrix.pdf_tex}
+  }
+  \caption{Success rates for different points of view.}
+  \label{fig:sc06_success_matrix}
+\end{subfigure}
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \scalebox{0.5}{
+  \input{images/sc06_pov_desire_matrix.pdf_tex}
+  }
+  \caption{Desires fulfilled for different points of view.}
+  \label{fig:sc06_desire_matrix}
+\end{subfigure}
+\caption[Success rate and desires fulfilled in scenario 06]{The two matrices show the model performance depending on which agent is using the network in scenario 06. In (a), the success percentage is shown. (b) depicts the percentage of desires fulfilled. Planning from one agent's point of view shows similar performance compared to planning for both agents. An average of three models is shown for the guided search.}
+\label{fig:sc_06_vs_baseline}
+\end{figure}
+For the success rate, the findings are very similar for all points of view. Using only the visual map for a single agent is usually within a bound of three percentage points higher or lower compared to using maps for both agents. This results in comparable average success rates when utilizing all maps ($0.7867$) versus only agent one's map ($0.7871$) in scenario 06. There is a slight drop-off when using agent zero's visual input only with $0.7714$.
+
+The only outlier in scenario 08 occurs when using $100$ iterations, where planning from agent zero's point of view is more successful by four percentage points compared to both agents. Apart from that, the average success across iterations is remarkably stable: $0.7186$ for both compared to $0.7186$ (agent zero) and $0.7119$ (agent one).
+
+When looking at the percentage of desires fulfilled, it stands out that in scenario 06 the learned models are not able to achieve values above zero with one exemption. The baseline has similarly low percentages with exceptions for $10$, $25$ and $50$ iterations.
+\begin{figure}
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \scalebox{0.5}{
+  \input{images/sc10_vs_baseline_success_heatmap.pdf_tex}
+  }
+  \caption{Success rates for different points of view.}
+  \label{fig:sc10_success_matrix}
+\end{subfigure}
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \scalebox{0.5}{
+  \input{images/sc10_vs_baseline_desire_heatmap.pdf_tex}
+  }
+  \caption{Desires fulfilled for different points of view.}
+  \label{fig:sc10_desire_matrix}
+\end{subfigure}
+\caption[Success rate and desires fulfilled in scenario 08]{The two matrices show the model performance depending on which agent is using the network in scenario 08. In (a), the success percentage is shown. (b) depicts the percentage of desires fulfilled. Using only a single agent's point of view is competitive with utilizing maps from both agents. Guided search outperforms the baseline for all settings and metrics. Three models are averaged for the guided search results.}
+\label{fig:sc_10_vs_baseline}
+\end{figure}
+
+The results are more interesting for scenario 08, where fluctuations for the rate of desires fulfilled can be found starting at $25$ iterations. Using only agent zero's map performs noticeably better for $100$ \gls{mcts} traces. Both agent's point of view is more successful at $25$ and $50$ iterations. Overall however, the mean percentage of desires fulfilled hovers around $15 \%$ with $15.24 \%$ desires fulfilled when using all visual maps compared to $15.10 \%$ and $15.62 \%$ for agent zero and agent one, respectively. The baseline is not competitive at only $2.14 \%$.
+
+\clearpage
+
+\subsection{How important is the number of iterations?}\label{ssec:eval_of_hyperparameters}
+For approaches that combine \gls{rl} with search, there is a trade-off between time allocated to the learning component of the algorithm and time allocated to the planning component \cite{moerlandThinkTooFast2020}. In the context of this thesis, planning corresponds to the number of \gls{mcts} iterations used during training. What number works best is not immediately obvious and therefore evaluated in the context of scenario 06.
+
+Figure~\ref{fig:iter_success_shaded} shows the training progress for $50$, $100$ and $200$ iterations.
+\begin{figure}[h]
+	\centering
+	\captionsetup{justification=centering}
+	\scalebox{0.9}{
+    \input{images/sc06_iteration_success.pdf_tex}
+    }
+	\caption[Training plots for different iterations]{Training progress with different iteration numbers. The $200$ iteration model learns in fewer episodes than both other models. Using $100$ iterations approaches a similar level of success as using $200$. For all models, three seeds are trained and one standard deviation is shown.}
+\label{fig:iter_success_shaded}
+\end{figure}
+While all models successfully improve over the course of the episodes, the network trained with $200$ iterations exhibits the highest success rate. This is unsurprising, as more time spent in \gls{mcts} searches should not only improve the quality of the action selected in the environment but also produce enhanced training targets.
+
+Delving deeper into the issue, Matrix~\ref{fig:iter_success_matrix} reveals an interesting dynamic: Despite being trained with a smaller time budget, the $100$ iteration model outperforms the one trained with $200$ iterations.
+\begin{figure}[h]
+	\centering
+	\captionsetup{justification=centering}
+	\scalebox{0.6}{
+    \input{images/sc06_iteration_success_matrix.pdf_tex}
+    }
+	\caption[Evaluation results for different iterations]{Evaluation of models trained with different iteration numbers. The model using $100$ iterations performs best for medium iteration values. In high iteration settings, the networks show similar performance. All results are averaged over three models.}
+\label{fig:iter_success_matrix}
+\end{figure}
+The phenomenon is especially noticeable when using a medium number of \gls{mcts} traces ($10$, $25$ and $50$). Both the $100$ as well as the $200$ iteration networks are superior when compared to the $50$ iteration model.
+
+\begin{table}[h]
+ \centering
+ \scalebox{0.9}{
+  \begin{tabular}{lcccc}
+    \toprule
+    \textbf{Iterations} & $50$ & $100$ & $200$ \\
+    \midrule
+    Wall clock & $8h53m$ & $14h28m$ & $32h11m$  \\
+    Mean success & $0.7686$ & $0.7933$ & $0.7867$ \\
+    \bottomrule
+  \end{tabular}
+  }
+\caption[Training wall clock time for different iterations]{Wall clock times for different training iteration numbers in scenario 06. The mean evaluation success rate is shown below. The model using $100$ iterations has a higher evaluation success rate than both $50$ and $200$ iterations.}
+\label{tab:wall_clock_iter}
+\end{table}
+Table~\ref{tab:wall_clock_iter} reports the mean success rates across all settings together with the wall clock time needed for the training.
+It confirms the findings of the matrix plot, where the $100$ iteration model performs best. When looking at the wall clock time, it takes roughly $1.6 \times$ as long to train as the $50$ iteration model. The network trained using $200$ \gls{mcts} traces takes another $2.2 \times$ longer compared to using $100$ traces. Larger models are not trained due to the computational resources required.
+
+After this short evaluation of the number of iterations, the next section tackles an important question regarding the policy distribution: How many mixture components are needed to properly guide the search?
+
+\subsection{How many mixture components are needed?}\label{ssec:eval_of_components}
+As noted in Section~\ref{sssec:mixtures}, a \gls{gmm} has the theoretical ability to approximate any distribution. Using a mixture model however introduces an additional hyperparameter in the number of components $K$. On one hand, having more components is desirable as it results in a more expressive model. On the other hand, it might also degrade performance or destabilize the training.
+
+Therefore it is sensible to perform an empirical analysis to determine the optimal number of components. The training results for different $K$ in scenario 08 are shown in Figure~\ref{fig:component_trainings}. 
+\begin{figure}[h]
+	\centering
+	\captionsetup{justification=centering}
+	\scalebox{0.9}{
+    \input{images/training_plots_components.pdf_tex}
+    }
+	\caption[Training for different numbers of components]{Training plots for models with different numbers of components $K$ in scenario 08. The Gaussian policy performs subpar compared to using a mixture model. Runs are averaged over the same $3$ seeds on Scenario 08 with one standard deviation shown.}
+\label{fig:component_trainings}
+\end{figure}
+For each setting, three runs are executed with the same three seeds each. The error bands show one standard deviation from the mean. It can be seen clearly that a policy parameterized by only a normal distribution has a noticeably lower success rate than the mixture models. This is an indicator that a single normal distribution is not enough to fit a proper model. When increasing the number of components, no distinguishable difference in the training can be observed.
+
+Looking at the evaluation results, a \gls{gmm} with $K=3$ shows slightly improved performance compared to the other two mixture models.
+\begin{figure}
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \scalebox{0.5}{
+  \input{images/comp_success_heatmap.pdf_tex}
+  }
+  \caption{Success rates for different $K$.}
+  \label{fig:comp_success_matrix}
+\end{subfigure}
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \scalebox{0.5}{
+  \input{images/comp_desire_heatmap.pdf_tex}
+  }
+  \caption{Desires fulfilled for different $K$.}
+  \label{fig:comp_desire_matrix}
+\end{subfigure}
+\caption[Evaluation for different numbers of components]{Desires fulfilled and success percentage for different numbers of components $K$ in scenario 08. (a) shows the success rate, where the mixture models substantially outperform a single normal distribution. All learned models are superior to the baseline. These results are also reflected in the percentage of desires fulfilled (b). An average over three models is used except for the baseline.}
+\label{fig:comp_matrix_plots}
+\end{figure}Plot~\ref{fig:comp_matrix_plots} shows the data for all evaluations. $100$ runs with fixed seeds are performed for each iteration setting and averaged over three models for each $K$ to obtain the results.
+Matrix~\ref{fig:comp_success_matrix} shows a slightly higher success rate for the \gls{gmm} with three components. Its mean success rate is $0.7186$ versus $0.7052$ for $K=4$ and $0.6948$ for the \gls{gmm} $2$. Additionally, it possesses the highest success rate in four out of seven iteration settings. All models outperform the baseline and all mixture models outperform a single normal distribution. Lastly, it is noteworthy that a \gls{gmm} with four components shows slightly better results than using two components.
+
+The findings regarding the success rate carry over to the percentage of desires fulfilled in Matrix~\ref{fig:comp_success_matrix}. Again, all learned models show stronger results than the baseline and the normal distribution cannot compete with mixture models. The \gls{gmm} with three components outperforms the other networks, particularly for $50$ and $200$ iterations. This results in the highest mean desires fulfilled percentage of $0.1524$ versus $0.1419$ for the \gls{gmm} $2$ and $0.1410$ for $K=4$.
+
+Harnessing the results from the previous paragraphs, all other models are trained using a \gls{gmm} with three components. The evaluation of whether centralized training improves the learning process therefore only uses $K=3$ in the following section.
+
+\subsection{What is the effect of centralized training?}\label{ssec:eval_of_centralized_training}
+In Section~\ref{sssec:central_plan_decentral_ex}, the \emph{Centralized Training with Decentralized Execution} paradigm is introduced as a technique to stabilize training performance.
+\begin{figure}[h]
+	\centering
+	\captionsetup{justification=centering}
+	\scalebox{0.6}{
+    \input{images/sc06_decentralized_success_matrix.pdf_tex}
+    }
+	\caption[Centralized training versus decentralized training]{Model evaluations for centralized training and decentralized training on scenario 06. Both were trained using $100$ iterations. Centralized training slightly outperforms decentralized training. Using centralized value estimates at evaluation time (\emph{Central eval}) shows no success rate gains over decentralized evaluation. Plain \gls{mcts} is superior to both models.}
+\label{fig:centralized_decentralized_matrix}
+\end{figure}
+Figure~\ref{fig:centralized_decentralized_matrix} shows the evaluation results of models differing in their usage of centralized value targets.
+
+During the training and evaluation of the guided search approach, all agents make decisions from their own point of view. In particular, they calculate value estimates and distributions conditioned on their own state. This produces an accurate ego reward estimate as both numerical states and a visual map is available to each agent. Centralized training in the context of this thesis refers to using only the ego reward estimates during training. An ego agent's reward estimates for the other vehicles are discarded, as they rely on incomplete information. After all, the ego agent only has a map from its own point of view at its disposal.
+
+Centralized value targets minimally increase the mean success percentage by $0.76$ percentage points ($0.7857$ to $0.7933$). The increase is not consistent across iterations. Furthermore, adding centralized value targets at evaluation time yields an even smaller benefit of $0.05$ percentage points. The final mean success rate improves from $0.7933$ t $0.7938$.
+
+After centralized value targets have been shown to not be a key component to network training, the next ablation study examines whether learned value targets are needed at all.
+
+\subsection{How important are the learned value estimates?}\label{ssec:eval_of_value_targets}
+Both AlphaZero as well as the A0C algorithm on which this thesis is based use a network architecture with two heads. One head learns a policy, whereas the other head learns value estimates for environment states \cite{silverGeneralReinforcementLearning2018, moerlandA0CAlphaZero2018}. This architecture has shown improved performance compared to separate networks for each task \cite{silverMasteringGameGo2017}. In the application to Go, truncating potentially long rollouts is reasonable, especially since a strong rollout policy can be expensive to compute \cite{silverMasteringGameGo2016}.
+
+Compared to learned value targets, using rollouts may be able to accelerate training progress by improving early state value estimates. The simulation policy used in the context of this thesis is able to choose from five basic actions: acceleration and deceleration without lateral movement, lane change to the left or right without change in longitudinal velocity and "doing nothing" (no velocity change in either direction). The choice between these actions is made by uniform sampling \cite{kurzerDecentralizedCooperativePlanning2018}.
+
+In an evaluation of whether the rollout policy described above is able to improve performance over learned value estimates, the first step comprises looking at the training progress. It is depicted in Figure~\ref{fig:sc10_rollout_success}.
+\begin{figure}
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \scalebox{0.55}{
+  \input{images/sc10_rollout_success.pdf_tex}
+  }
+  \caption{Training success.}
+  \label{fig:sc10_rollout_success}
+\end{subfigure}
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \scalebox{0.55}{
+  \input{images/sc10_rollout_explained_var.pdf_tex}
+  }
+  \caption{Explained variance}
+  \label{fig:sc10_rollout_explained_var}
+\end{subfigure}
+\caption[Rollout training and explained variance]{(a) shows the training success of using \gls{mcts} rollouts versus learned value targets in scenario 08. Both models perform similarly. (b) depicts the explained variance. The rollout model converges faster and to a higher value. Both plots show one standard deviation error bands for three seeds.}
+\label{fig:rollout_plots}
+\end{figure}
+Both value estimation methods show almost identical performance during the training.
+
+A quantity which can be helpful for evaluating whether successful value learning occurs is the coefficient of determination or $R^2$. It is given in Definition~\ref{eq:explained_var} and explains how well predictions $\hat y_i$ explain the variation of a target variable $y_i$ \cite{weisbergAppliedLinearRegression}. For this reason it is also called \emph{explained variance}.
+\begin{gather}\label{eq:explained_var}
+    R^2 = 1 - \frac{RSS}{SYY} = 1 - \frac{\sum (y_i - \hat y_i)^2}{\sum (y_i - \bar y)^2} = 1- \frac{\var(\Vtarget - \Vest)}{\var(\Vtarget)}~.
+\end{gather}
+Here $RSS = \sum (y_i - \hat y_i)^2$ is the \emph{residual sum of squares} and $SYY = \sum (y_i - \bar y)^2$ is the \emph{total sum of squares} \cite{weisbergAppliedLinearRegression}. Equation~\ref{eq:explained_var} then re-expresses $R^2$ in terms of the network output: value targets \Vtarget\ and network value estimates \Vest.
+
+The explained variance for the guided search with and without \gls{mcts} rollouts is plotted in Figure~\ref{fig:sc10_rollout_explained_var}. Here one can see a clear differentiation between faster progress and higher final values for the rollout model compared to using network value estimates. This is to be expected, as the value targets \Vtarget\ are always produced from the same simulation policy when using rollouts. They are therefore stationary, as their distribution does not change over the course of the training. The training targets based on network value estimates as as described in Section~\ref{sssec:single_agent_objective} (Equation~\ref{eq:value_target}) on the other hand are non-stationary. The learning process changes their distribution during the training.
+
+Does the effect described above impact the algorithm's performance in an evaluation setting? As shown in Figure~\ref{fig:rollout_success_matrix}, \gls{mcts} simulations increase the success rate from $0.7186$ (\gls{gmm} 3) to $0.7467$ (Rollout).
+\begin{figure}
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \scalebox{0.5}{
+  \input{images/sc10_rollout_success_matrix.pdf_tex}
+  }
+  \caption{Rollout success rates.}
+  \label{fig:rollout_success_matrix}
+\end{subfigure}
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \scalebox{0.5}{
+  \input{images/sc10_rollout_desire_matrix.pdf_tex}
+  }
+  \caption{Rollout desires fulfilled.}
+  \label{fig:rollout_desire_matrix}
+\end{subfigure}
+\caption[Evaluation of different rollout strategies]{Performance of different rollout strategies in scenario 08. \gls{gmm} $3$ performs no rollouts during training and evaluation. The \emph{Rollout} model uses \gls{mcts} simulations as value targets during both training and evaluation. The \emph{No rollout} model is trained with \gls{mcts} rollouts instead of network value estimates but uses the network during evaluation. Using \gls{mcts} simulations yields a slightly higher success rate but noticeably lower percentage of desires fulfilled. Results are averaged over three models.}
+\label{fig:rollout_matrix_plots}
+\end{figure}
+The \emph{Rollout} model uses simulations both at training as well as at evaluation time whereas the \emph{No rollout} model is trained using simulations but does not perform them at evaluation time. Still, the No rollout model has a higher average success rate compared to the network using learned value targets ($0.7319$ to $0.7186$).
+
+In contrast to the results regarding the success rate, the ranking is flipped when analyzing the percentage of fulfilled desires. Here the \gls{gmm} $3$ has the highest average across different iteration settings with $0.1524$. This is followed by the model not using simulations at evaluation time ($0.1290$). Performing rollouts at training and test time yields an average rate of desires fulfilled of $0.0457$.
+
+The results of this section are inconclusive of whether learned value targets are required as a core component of the proposed algorithm or not. A last ablation study therefore follows next with an evaluation of which loss component drives the learning process.
+
+\subsection{Which loss components are critical for success?}\label{ssec:eval_of_loss}
+Modifications to the value targets from the previous two sections have had minimal impact on training and evaluation performance. This motivates the question of whether the value loss is even needed for the proposed algorithm. In an ablation study in the following paragraphs, models are therefore trained using only either the policy loss or the value loss.
+
+\begin{figure}[h]
+	\centering
+	\captionsetup{justification=centering}
+	\scalebox{0.9}{
+    \input{images/train_success_loss.pdf_tex}
+    }
+	\caption[Training progress for different losses]{Training progress for models trained on different objective functions in scenario 06. Using only the policy loss progresses similarly to using the full objective. The model minimizing only the value loss shows no signs of improving. Runs are averaged over three seeds with one standard deviation shown.}
+\label{fig:train_success_loss}
+\end{figure}
+Figure~\ref{fig:train_success_loss} visualizes the success rate over the course of the training on scenario 06 with $100$ iterations. It immediately stands out that using the value loss as the only objective results in no improvement at all. In comparison, the progress of the model trained only on the policy loss is indistinguishable from the runs minimizing the full objective detailed in Section~\ref{sssec:multi_agent_objective}.
+
+\begin{figure}[H]
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \scalebox{0.55}{
+  \input{images/overall_loss.pdf_tex}
+  }
+  \caption{Overall loss.}
+  \label{fig:overall_loss}
+\end{subfigure}
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \scalebox{0.55}{
+  \input{images/policy_loss.pdf_tex}
+  }
+  \caption{Policy loss.}
+  \label{fig:policy_loss}
+\end{subfigure}
+
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \scalebox{0.55}{
+  \input{images/value_loss.pdf_tex}
+  }
+  \caption{Value loss.}
+  \label{fig:value_loss}
+\end{subfigure}
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \scalebox{0.55}{
+  \input{images/explained_variance_loss.pdf_tex}
+  }
+  \caption{Explained variance.}
+  \label{fig:explained_var_loss}
+\end{subfigure}
+\caption[Loss components during training]{Progress of different loss components over the course of the training on scenario 06. Three models are trained with one standard deviation shown. Models optimizing only one component are able to minimize the respective objective. The explained variance for the value loss only model is lower than for the network trained on Objective~\ref{eq:multi_agent_full}.}
+\label{fig:loss_comps}
+\end{figure}
+A closer examination is depicted in Figure~\ref{fig:loss_comps}. Runs where only one loss component is minimized show the desired behavior in Plots~\ref{fig:policy_loss} and~\ref{fig:value_loss}: The loss is reduced for the target objective component and stays at the same level or increases for the other component.
+
+Looking at the explained variance (see Equation~\ref{eq:explained_var}) reveals that the model trained only on the policy loss hovers slightly below zero. This is to be expected, as random outputs should have no explanatory value in regards to the variation of the value targets. The network using only the value component as objective shows learning progress on a low level, converging to an $R^2$ of around $0.1$. Training on the full loss improves upon this value by a factor of roughly $3 \times$.
+
+An interpretation of the results from this Section is given in Chapter~\ref{ssec:interpretation}. The evaluation concludes with an analysis of the generalization capabilities of the proposed approach.
+
+\subsection{How well can the learned policies generalize?}\label{ssec:eval_of_generalization}
+Overfitting to a specific environment is a prevalent problem in \gls{drl} agents \cite{cobbeQuantifyingGeneralizationReinforcement}. Training and evaluation on the same environment as done in the previous sections is a conventional procedure for common benchmarks \cite{cobbeQuantifyingGeneralizationReinforcement, brockmanOpenAIGym2016}. Nevertheless, learning more abstract, general knowledge would be desirable. An agent that learns to stay in the lane and avoid obstacles should for instance be able to transfer these skills to similar environments. Whether the networks trained through the approach proposed by this thesis are able to do so is evaluated in the following section.
+
+To benchmark generalization performance, the learned models are additionally evaluated on previously unseen scenarios. All scenarios are visualized in Appendix~\ref{app:scenarios}. The baseline \gls{mcts} without guided search as well as an untrained model serve as standards for comparison.
+\begin{landscape}
+\begin{table}[h]
+ \centering
+ \scalebox{0.9}{
+  \begin{tabular}{lcccccccc}
+    \toprule
+    \textbf{Model} & SC06 & SC08 & Reg. SC08 & SC06 \& SC08  & SC06 \& SC08 + Exp. & Random & Random + Exp. & Baseline\\
+    \textbf{Scenario} & & & & & & & \\
+    \midrule
+    SC01 & \cellcolor{lightbrown}$0.44$ & \cellcolor{lightbrown}$0.98$ & \cellcolor{lightbrown}$0.93$ & \cellcolor{lightbrown}$0.98$ &  \cellcolor{lightbrown}$\mathbf{1.00}$ & \cellcolor{lightbrown}$0.01$ & \cellcolor{lightbrown}$0.99$ & \cellcolor{lightbrown}$\mathbf{1.00}$ \\
+    SC02 & \cellcolor{lightbrown}$0.27$ & \cellcolor{lightbrown}$0.72$ & \cellcolor{lightbrown}$0.83$ & \cellcolor{lightbrown}$0.78$ &  \cellcolor{lightbrown}$0.95$ & \cellcolor{lightbrown}$0.01$ & \cellcolor{lightbrown}$0.90$ & \cellcolor{lightbrown}$\mathbf{0.97}$ \\
+    SC03 & \cellcolor{lightbrown}$0.48$ & \cellcolor{lightbrown}$0.99$ & \cellcolor{lightbrown}$0.98$ & \cellcolor{lightbrown}$0.96$ &  \cellcolor{lightbrown}$\mathbf{1.00}$ & \cellcolor{lightbrown}$0.00$ & \cellcolor{lightbrown}$\mathbf{1.00}$ & \cellcolor{lightbrown}$\mathbf{1.00}$ \\
+    SC04 & \cellcolor{lightbrown}$0.10$ &  \cellcolor{lightbrown}$0.82$ & \cellcolor{lightbrown}$0.87$ & \cellcolor{lightbrown}$0.60$ &  \cellcolor{lightbrown}$\mathbf{1.00}$ & \cellcolor{lightbrown}$0.00$ & \cellcolor{lightbrown}$0.99$ & \cellcolor{lightbrown}$0.99$ \\
+    SC05 & \cellcolor{lightbrown}$0.70$ & \cellcolor{lightbrown}$0.21$ & \cellcolor{lightbrown}$0.17$ & \cellcolor{lightbrown}$0.61$ &  \cellcolor{lightbrown}$0.96$ & \cellcolor{lightbrown}$0.34$ & \cellcolor{lightbrown}$0.95$ & \cellcolor{lightbrown}$\mathbf{1.00}$ \\
+    SC06 & \cellcolor{lightkit}$0.99$  & \cellcolor{lightbrown}$0.39$ & \cellcolor{lightbrown}$0.32$ & \cellcolor{lightkit}$0.90$ & \cellcolor{lightkit}$0.98$ & \cellcolor{lightbrown}$0.31$ & \cellcolor{lightbrown}$0.98$ & \cellcolor{lightbrown}$\mathbf{0.99}$ \\
+    SC07 & \cellcolor{lightbrown}$0.00$ & \cellcolor{lightbrown}$0.00$ & \cellcolor{lightbrown}$0.02$ & \cellcolor{lightbrown}$0.05$ & \cellcolor{lightbrown}$0.01$ & \cellcolor{lightbrown}$0.00$ & \cellcolor{lightbrown}$0.00$ & \cellcolor{lightbrown}$\mathbf{0.07}$ \\
+    SC08 & \cellcolor{lightbrown}$0.39$ & \cellcolor{lightkit}$\mathbf{0.84}$ & \cellcolor{lightkit}$0.81$ & \cellcolor{lightkit}$\mathbf{0.84}$ &  \cellcolor{lightkit}$0.54$ & \cellcolor{lightbrown}$0.00$ & \cellcolor{lightbrown}$0.04$ & \cellcolor{lightbrown}$0.20$ \\
+    \midrule
+    \textbf{Mean 01-05, 07} & $0.3317$ & $0.6200$ & $0.6333$ & $0.6630$ &  $0.8200$ & $0.0600$ & $0.8050$ & $\mathbf{0.8383}$ \\
+    \textbf{Mean unseen} & $0.3400$ & $0.5871$ & $0.5886$ & $0.6630$ & $\mathbf{0.8200}$ & $0.0838$ & $0.7313$ & $0.7775$ \\
+    \textbf{Mean} & $0.4212$ & $0.6187$ & $0.6162$ & $0.7150$ & $\mathbf{0.8050}$ & $0.0838$ & $0.7313$ & $0.7775$ \\
+    \bottomrule
+  \end{tabular}
+  }
+\caption[Generalization performance]{Generalization performance of different trained models measured by success rate. All are trained using $200$ iterations. $100$ different seeds are used in each evaluation with a randomly selected model. Evaluations are run using $100$ iterations.  Cyan marks a scenario an agent has been trained on whereas brown symbolizes an unseen setting. The best models are denoted in bold. The network trained on scenario 06 ("SC06") shows limited generalization capabilities but still improves over a random baseline ("Random"). A model trained on scenario 08 ("SC08") performs better on unseen scenarios. Adding BatchNorm and LayerNorm has little effect ("Reg. SC08"). Training a network on both scenarios ("SC06 \& SC08") yields a higher mean success rate and more consistent generalization for scenarios 04 and 05. Adding three pre-calculated actions (lane change left, lane change right, no change) improves the performance of the random model ("Random + Exp.") past the trained models
+. A combination of these actions together with the model trained on scenario 06 and scenario 08 yields the highest average success rate ("SC06 \& SC08 + Exp.").}
+\label{tab:generalization_performance}
+\end{table}
+\end{landscape}
+The results are reported in Table~\ref{tab:generalization_performance}, where unseen scenarios are shaded in brown and scenarios which have been trained on are marked with cyan.
+
+Looking at the success rates, the models trained on scenario 06 ("SC06") and 08 ("SC08") are able to show improved performance in unseen scenarios compared to a random model ("Random"). The network trained on scenario 08 demonstrates evaluation results more in line with the pure \gls{mcts} baseline in scenarios 01, 02, 03 and 04. Its performance in scenarios 05, 06 and 07 remains subpar. Particularly in scenario 06, SC08 is not able to improve considerably over a random network.
+
+Adding batch normalization \cite{ioffeBatchNormalizationAccelerating2015} and layer normalization \cite{baLayerNormalization2016} during training ("Reg. SC08") minimally boosts generalization performance. At the same time, the normalization schemes decrease the success rate on the scenario that is being trained on.
+
+Using two scenarios in the training process ("SC06 \& SC08") has added benefits apart from the performance on seen tasks: The combined performance on the unseen scenarios 04 and 05 is the highest with $0.605$ compared to the next best model ("SC08") at $0.515$. Success rate on the training tasks stays similar to the networks trained on a single scenario.
+
+Section~\ref{ssec:eval_baseline} demonstrates the benefits of using pre-calculated maneuvers. Incorporating such maneuvers into the guided search approach is therefore a reasonable thing to try. However, care must be taken during network training: If the heuristic is enabled during the training phase, the model focuses on learning the pre-calculated actions. This is undesirable, as they are already added to each node anyway. Additionally, a pre-calculated lane change may introduce extreme actions at the border of the action space. The arising large negative log-probabilities negatively affect training stability.
+
+For the experiments with pre-calculated maneuvers, three basic actions are added: lane change left, lane change right, and no change. The results when using an enhanced random model are reported in Table~\ref{tab:generalization_performance} under "Random + Exp.". Simply adding these three basic actions leads to an orders of magnitude improvement in success rate. "Random + Exp." even outperforms the "SC06 \& SC08" model on average. The increase is particularly noticeable in scenarios 01-06. Adding the same maneuvers to the "SC06 \& SC08" network yields the model with the highest overall success rate ("SC06 \& SC08 + Exp."). It inherits the strength of the baseline \gls{mcts} on scenarios 01-06 while improving its performance in scenario 08. The success rate of "SC06 \& SC08 + Exp." on this task however falls short of the models without heuristic expansion ("SC08" and "Reg. SC08"). Lastly, scenario 07 is inherently difficult with no approach achieving a success percentage of above $10 \%$.
+

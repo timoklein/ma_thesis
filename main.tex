@@ -1,0 +1,82 @@
+\documentclass[oneside,a4paper,12pt, dvipsnames]{article} % Gibt an: Papierformat, Schriftgröße
+
+
+%% Own Packages-----------------------------------------------------
+\setlength {\marginparwidth }{2cm}
+\usepackage{timomacros}
+\usepackage{thesismacros}
+\usepackage{listings}
+\usepackage{caption, float}
+\captionsetup[table]{position=bottom}
+\lstdefinestyle{mystyle}{
+    commentstyle=\color{Aquamarine},
+    keywordstyle=\color{Blue},
+    numberstyle=\tiny\color{Dandelion},
+    stringstyle=\color{Mahogany},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=false,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=4
+}
+\lstset{style=mystyle}
+\graphicspath{{images/}}
+\usepackage[export]{adjustbox}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{multicol}
+\usepackage{transparent}
+\usepackage{pdflscape}
+% Table columns for the table in related work
+\newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+
+%% ---------------------------------------------------------------------
+
+
+\usepackage{thesis}
+% Needs to be included after amsmath
+\usepackage{thmtools,thm-restate}
+% Hier werden die Abkürzungen definiert. Sofern ein Abkürzungsverzeichnis verwendet wird bitte entkommentieren.
+\include{sections/acronyms}
+
+\begin{document}
+\setlanguageEnglish % Sprache einstellen.
+
+
+% Hier kommt der ganze Vorspann. Bei Verwendung von Abkürzungs-, Abbildungs- oder Tabellenverzeichnisse bitte in dieser Datei entsprechend entkommentieren.
+\include{sections/preamble}
+
+% Füge hier die Kapitel per Verweis ein. Der Befehl \include fügt die angegebene tex-Datei an der jeweiligen Stelle ein. Die eingefügte Datei wird als normaler Teil des Quelltextes mitverarbeitet und ist daher LaTeX-Code (ohne Vorspann und \begin{document}...\end{document}).
+\include{sections/1introduction}
+\include{sections/2preliminaries}
+\include{sections/3relatedwork}
+\include{sections/4concept}
+\include{sections/5implementation}
+\include{sections/6evaluation}
+\include{sections/7discussion}
+\include{sections/8conclusion}
+
+
+% Anhang / Appendix
+\appendix % Ab hier wird mit A, B, ... weiternummeriert.
+% Für den Fall eines Anhangs entkommentieren
+\include{sections/appendix}
+
+% Literaturverzeichnis
+\bibliographystyle{acm}
+\bibliography{bib} % Datei mit Literaturangaben einbinden
+
+% Schriftliche Erklärung
+\newpage
+\include{sections/assertion}
+
+\end{document}

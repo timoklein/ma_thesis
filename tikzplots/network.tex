@@ -1,0 +1,38 @@
+\begin{figure}[!h]
+\centering
+\begin{tikzpicture}[x=1.5cm, y=1.5cm, >=stealth]
+
+    \foreach \m/\l [count=\y] in {1,2,3}
+      \node [every neuron/.try, neuron \m/.try] (input-\m) at (0,2.5-\y) {\large $g$};
+    
+    \foreach \m [count=\y] in {1,2, 3, 4, 5}
+      \node [every neuron/.try, neuron \m/.try ] (hidden-\m) at (2,3.5-\y) {\large $g$};
+    
+    \foreach \m [count=\y] in {1,2}
+      \node [every neuron/.try, neuron \m/.try ] (output-\m) at (4,2-\y) {\large $g$};
+    
+    \foreach \l [count=\i] in {1, 2, 3}
+      \draw [<-] (input-\i) -- ++(-1,0)
+        node [above, midway] {$x_\l$};
+    
+    \foreach \l [count=\i] in {1,2}
+      \draw [->] (output-\i) -- ++(1,0)
+        node [above, midway] {$\hat y_\l$};
+    
+    \foreach \i in {1, 2, 3}
+      \foreach \j in {1, 2, 3, 4, 5}
+        \draw [->] (input-\i) -- (hidden-\j);
+    
+    \foreach \i in {1, 2, 3, 4, 5}
+      \foreach \j in {1, 2}
+        \draw [->] (hidden-\i) -- (output-\j);
+    
+    \foreach \l [count=\x from 0] in {Input, Hidden, Ouput}
+      \node [align=center, above] at (\x*2,3) {\l \\ layer};
+      
+    \node (w1) [left=0.75cm of hidden-1] {\large $\mathbf {W_1}$};
+    \node (w2) [right=0.75cm of hidden-1] {\large $\mathbf {W_2}$};
+
+\end{tikzpicture}
+\caption[Multilayer Perceptron]{Visualization of an \gls{mlp} model. Inputs are passed into a first layer and transformed by a weight matrix $\mathbf W_1$ and a nonlinear activation function $g$. The process is repeated to produce estimates $\hat y_1, \hat y_2$. The bias term is not visualized.}\label{fig:mlp}
+\end{figure}

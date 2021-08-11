@@ -1,0 +1,10 @@
+% Multi Head Attention
+\DeclareMathOperator\attention{Attention}
+\DeclareMathOperator\multihead{MultiHead}
+\DeclareMathOperator\concat{Concat}
+\DeclareMathOperator\head{head}
+
+% dec-MDP as 6-tuple: (Y, S, A, P, R, y)
+\newcommand*{\dmdptuple}{\ifmmode \langle \agentset, \mathcal S, \mathcal A, P, \mathcal R, \gamma \rangle  \else $\langle \agentset, \mathcal S, \mathcal A, P, \mathcal R, \gamma \rangle$\fi}
+% Q function at the root node
+\newcommand*{\rootQ}{\ifmmode  Q(\mathbf s_0, \mathbf a)  \else $Q(\mathbf s_0, \mathbf a)$\fi}

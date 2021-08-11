@@ -1,0 +1,329 @@
+\glsresetall
+\section{Preliminaries}\label{sec:preliminaries}
+This chapter introduces the theoretical foundations of the proposed method. First, the basics of \gls{rl} are described starting with \glspl{mdp}. Following is a subsection extending \glspl{mdp} to a more general multi-agent setting: \glspl{dmdp}. Then relevant \gls{rl} terminology is introduced. Next, the concept of \emph{Centralized Training with Decentralized Execution} is explained, which is a very common framework for training \gls{marl} algorithms. The second sub-chapter describes the \gls{mcts} planning algorithm and its most common instantiation, \gls{uct}. This is followed by two important extensions that allow the application of \gls{mcts} to problems with continuous action spaces and multiple agents. The last section introduces neural networks with a particular focus on concepts relevant to the approach chosen in this thesis. These are namely \glspl{cnn}, the self-attention mechanism and \glspl{gmm}.
+
+\subsection{Reinforcement Learning}\label{ssec:rl}
+The following chapter gives an introduction into the main \gls{rl} formalism, namely \glspl{mdp}. This problem specification is then extended to multi-agent settings with \glspl{dmdp}. \gls{rl} terminology is described next before the chapter ends with a brief description of a common \gls{marl} training paradigm.
+
+\subsubsection{Reinforcement Learning as a Markov Decision Process}\label{sssec:mdp}
+Borrowing slightly adapted notation from \cite{francois-lavetIntroductionDeepReinforcement2018}, an \gls{rl} problem can be formalized as a $5$-tuple \mdptuple, where\footnote{To make the notation more concise, in the following text $s^\prime \coloneqq s_{t+1}$, $a^\prime \coloneqq a_{t+1}$, $s \coloneqq s_t$ and $a \coloneqq a_t$ are used as abbreviations.}:
+\begin{itemize}
+    \item \statespace\ is the \emph{state space} of the environment.
+    \item \actionspace\ is the \emph{action space} of the environment.
+    \item $\transitionfunc: \statespace \times \actionspace \times \statespace \rightarrow [0, 1]$ is the \emph{transition function} specifying the dynamics of the environment. That is, given a state \state\ and an action \action, the transition function outputs a probability distribution over the next state $s^\prime \in \mathcal S$.
+    \item $\rewardfunc: \statespace \times \actionspace \times \statespace \rightarrow \mathbb R$  is the \emph{reward function} of the environment, mapping a \emph{transition} \transition\ to a real-valued reward $r \in \mathbb R$.
+    \item $\gamma \in [0, 1]$ is a \emph{discount factor} which weighs future rewards. 
+\end{itemize}
+In an \gls{mdp}, the agent and the environment interact with each other over a sequence of discrete time steps $t=0, 1, 2, \ldots \,$. More specifically, at time step $t$ the environment is in state \state. The agent perceives this representation and chooses an action \action. After execution of action $a$, the environment transitions into the next state $s^\prime \sim \transitionfunc$. The transition \transition~also yields a reward \rewardfunc\ for the agent. The whole process is illustrated schematically in Figure~\ref{fig:mdp}. 
+\input{tikzplots/mdp}
+Resulting from the agent-environment interaction is a sequence of transitions which is called a \emph{trajectory} and denoted as
+\begin{gather}\label{eq:trajectory}
+    T = \big( (s_0, a_0, r_0), \; \ldots, \;( s_{t-2}, a_{t-2}, r_{t-2}), \; (s_{t-1}, a_{t-1}, r_{t-1}), \; s_t  \big)~,
+\end{gather}
+where $s_t$ is a terminal state \cite{francois-lavetIntroductionDeepReinforcement2018}.
+
+There are two important characteristics of the above \gls{mdp} definition meriting further explanation. First, the process is \emph{fully observable}. This means that the agent observes the true state of the environment. A model that extends \glspl{mdp} to partially observable environments is the \gls{pomdp}, which is not considered in this work. The second key characteristic of the \gls{mdp} framework is that the transition function exhibits the \emph{Markov property}. It requires that \transitionfunc\ solely depends on the previous state-action pair $s, a$ instead of the whole sequence of previous states and actions \cite{suttonReinforcementLearningIntroduction2018}. The Markov property can be stated formally as
+\begin{gather}\label{eq:markov_property}
+    P(s_{t+1}|s_t, a_t) = P(s_{t+1}|s_t, a_t, s_{t-1}, a_{t-1}, \ldots, s_0, a_0)~.
+\end{gather}
+On one hand, this assumption simplifies modeling the transition dynamics significantly. On the other hand, the Markov property imposes restrictions on the state \state, as it must now encode the knowledge of all previous agent-environment interactions \cite{suttonReinforcementLearningIntroduction2018}.
+
+The rule by which an agent selects actions is called a \emph{policy} and denoted as
+\begin{equation}\label{eq:policy_def}
+    \piplain: \statespace \times \actionspace \rightarrow [0, 1]~.    
+\end{equation}
+It is a mapping from an action $a$ to the probability of selecting that action given a state $s$.
+
+Finally, the goal of the agent within the \gls{mdp} framework is to find a policy that maximizes the discounted future reward $\sum_{k=0}^\infty \gamma^k r_{t+k+1}$ \cite{suttonReinforcementLearningIntroduction2018}. This can be expressed in terms of the so called \emph{value function} \cite{suttonReinforcementLearningIntroduction2018}
+\begin{equation}
+\begin{gathered}\label{eq:value_function}
+    \Vpi = \E{\pi} \Big[ \sum_{k=0}^\infty \gamma^k r_{t+k+1} \, \Big| \, s_t = s \Big], \quad \forall \state~, 
+\end{gathered}
+\end{equation}
+where \Vpi\ is the expected reward when starting in state $s$ and following policy $\pi$.
+
+The agent's optimization goal can now be expressed in terms of the value function as
+\begin{equation}
+\begin{gathered}\label{eq:optimal_value_function}
+    \Vopt = \max_{\pi \in \Pi} \, \Vpi~,
+\end{gathered}
+\end{equation}
+where \Vopt\ is the optimal value function. Another function playing an important role in \gls{rl} is the action-value function or \emph{Q function}. It is similarly defined to the value function with the key difference being that it additionally conditions on the action \cite{suttonReinforcementLearningIntroduction2018}:
+\begin{equation}
+\begin{gathered}\label{eq:q_function}
+    \Qpi = \E{\pi} \Big[ \sum_{k=0}^\infty \gamma^k r_{t+k+1} \, \Big| \, s_t = s, a_t = a \Big]~.
+\end{gathered}
+\end{equation}
+The optimal Q function is defined analogously \cite{francois-lavetIntroductionDeepReinforcement2018}:
+\begin{equation}
+\begin{gathered}\label{eq:q_opt_function}
+    \Qopt = \max_{\pi \in \Pi} \, \Qpi~.
+\end{gathered}
+\end{equation}
+A key aspect in which the Q function differs from the value function is that it allows a direct expression for the optimal policy \piopt. If in each state \state\ the agent selects the action \action\ with the highest Q-value, it automatically follows the optimal policy \cite{francois-lavetIntroductionDeepReinforcement2018}. Equation~\ref{eq:q_opt_policy} shows this relationship
+\begin{equation}
+\begin{gathered}\label{eq:q_opt_policy}
+    \pi^*(s) = \argmax_{\action} \, \Qopt~.
+\end{gathered}
+\end{equation}
+The formalism described above covers single-agent settings. Since the goal of this thesis is to learn behavior in environments with multiple agents, it must be extended. A general extension of \glspl{mdp} for multiple agents is called a \gls{dmdp} and described in the next section.
+
+\subsubsection{Decentralized Markov Decision Processes}\label{sssec:dec_mdp}
+So far only solutions single-agent \glspl{mdp} have been considered. In the real world however, agents often compete with each other for resources or cooperate in teams to achieve a common goal. Incorporating the set of agents into the problem specification, a \gls{dmdp} can be described as the $6$-tuple \dmdptuple \cite{oliehoekConciseIntroductionDecentralized2016, kurzerDecentralizedCooperativePlanning2018}, where:
+\begin{itemize}
+    \item \agentset\ is the set of available agents with indices $i \in \{1, 2, \ldots \}$.
+    \item $\statespace = \times \statespace_i$ represents the \emph{joint state space}, where $\statespace_i$ denotes the state space of agent $i$.
+    \item $\actionspace = \times \actionspace_i$ formalizes the \emph{joint action space}, where $\actionspace_i$ denotes the action space of agent $i$.
+    \item $\jointtransitionfunc: \statespace \times \actionspace \times \statespace \rightarrow [0, 1]$ is the transition function specifying the dynamics of the environment. Note that the transition function now conditions on the \emph{joint action} $\mathbf a$ of all agents.
+    \item $\jointrewardfunc: \statespace \times \actionspace \times \statespace \rightarrow \mathbb R$  is the reward function of the environment, mapping a \emph{joint transition} \jointtransition\ to a real-valued reward $r \in \mathbb R$.
+    \item $\gamma \in [0, 1]$ is a \emph{discount factor}, describing the influence of future rewards.  
+\end{itemize}
+In the following work, a variable denoted with the subscript $_i$ refers to the agent $i$.
+
+As with \glspl{mdp}, a \gls{dmdp} makes two important assumptions which require further examination. The first assumption is that agents select their actions independently without knowing about other agent's decisions. While the solution to the \gls{dmdp} is a joint policy $\Pi = \langle \pi_i, \ldots, \pi^n \rangle$, each agent only optimizes its individual policy $\pi_i: \statespace_i \times \actionspace_i \rightarrow [0, 1]$ \cite{oliehoekConciseIntroductionDecentralized2016}.
+
+The second assumption is that the \gls{dmdp} is \emph{jointly observable} \cite{oliehoekConciseIntroductionDecentralized2016}, meaning that combining the observations of all agents allows recovering the exact state of the environment. To give a concrete example relevant to this work, consider an environment where multiple cars are on a road and each car observes its own location and dynamics (e.g. velocity, steering angle, etc.) perfectly. Then combining the observations of all vehicles would yield the complete state of the environment.
+
+\subsubsection{Reinforcement Learning Terminology}\label{sssec:rl_term}
+Since its inception in the late 1970's \cite{suttonReinforcementLearningIntroduction2018}, \gls{rl} as a field has developed its own terminology for a variety of concepts. Since some of them are relevant to understand content in later chapters of this work, they are briefly explained here.
+
+Recall that the goal of \gls{rl} from Section~\ref{sssec:mdp} is to find a policy \piplain\ that maximizes future reward. The question then becomes: How can such a policy be learned? In general, \gls{rl} algorithms can be categorized into two broad classes: \emph{policy-based} and \emph{value-based}. Policy-based methods try to directly learn a policy which maximizes Objective~\ref{eq:value_function}. A very common class of algorithms within this framework are policy gradients, among which REINFORCE is known best \cite{williamsSimpleStatisticalGradientfollowing}. Value-based algorithms try to instead learn a value function or Q-function from which the optimal policy can be derived. Q-Learning and an extension called \gls{dqn} \cite{mnihHumanlevelControlDeep2015} are its most prominent representatives.
+
+\glspl{dqn} belong to a major area of focus for current research in \gls{rl} called \gls{drl}. Consider a simple environment like a $9 \times 9$ grid maze: In such an environment it is possible to simply store all relevant quantities in a table. As state or action spaces grow large or even infinite, the approach quickly becomes intractable. A solution to this problem is to approximate the Q-function or policy using deep neural networks, which are introduced in section~\ref{ssec:nns}. The combination of \gls{rl} and function approximation is called \gls{drl} and responsible for many recent breakthroughs in artificial intelligence \cite{mnihHumanlevelControlDeep2015, silverMasteringGameGo2016}.
+
+A learned policy can be either stochastic \piplain\ or deterministic $\pi(s)$. Given a state $s$, a deterministic policy will always select the best known action $a$. This inhibits exploration of actions which are currently deemed suboptimal but could provide better returns in the long run. To alleviate the issue, deterministic policies usually inject randomness into the action selection to encourage exploration. Examples are $\varepsilon$-greedy action selection \cite{mnihHumanlevelControlDeep2015} or adding action noise via some stochastic process \cite{lillicrapContinuousControlDeep2019, silverMasteringGameGo2017}. Another option is to learn the parameters of a distribution from which actions can then be sampled. Particularly in continuous control settings this is a common strategy, where often the parameters of a normal distribution are learned. An example of an algorithm learning a stochastic policy is \gls{sac}, which is a very competitive model-free method for continuous control \cite{haarnojaSoftActorCriticOffPolicy2018}.
+
+The term \emph{model-free} in the last sentence refers to systems that are only learning from trial-and-error \cite{suttonReinforcementLearningIntroduction2018}. \emph{Model-based} methods on the other hand rely on a model of the environment to plan future actions. This model can either be given, for instance through the rules of the game like in chess, or it can be learned by the algorithm \cite{suttonReinforcementLearningIntroduction2018}. The system described in Section~\ref{sec:concept} is an example of a model-based algorithm.
+
+Lastly, \gls{rl} systems can be differentiated into \emph{off-policy} and \emph{on-policy} algorithms. To give a succinct explanation: "\emph{On-policy methods attempt to evaluate or improve the policy that is used to make decisions, whereas off-policy methods evaluate or improve a policy different from that used to generate the data}" \cite{suttonReinforcementLearningIntroduction2018}. To illustrate the difference, consider again the example of \gls{dqn}. Just like this thesis (see Algorithm~\ref{algo:training_algorithm}), it uses a replay buffer to store past experiences and learn from them. These experiences however are all gathered from different policies, since between environment interactions training occurs. It is therefore an off-policy method. On-policy methods on the other hand are trained using only data gathered from the current policy. The reuse of previous experiences in what is called experience replay allows off-policy algorithms to be more sample efficient \cite{francois-lavetIntroductionDeepReinforcement2018}.
+
+\subsubsection{Centralized Training with Decentralized Execution}\label{sssec:central_plan_decentral_ex}
+In the \gls{dmdp} framework, each agent selects its own actions independently of the other agent's choices. This paradigm is called \emph{decentralized execution}. During training however, it is desirable that agents have access to additional information to accelerate the training process \cite{loweMultiAgentActorCriticMixed2020}. Due to the nature of training \gls{rl} agents in a simulator, conditioning on extra knowledge  is a commonly used approach. This gives rise to a paradigm called \emph{Centralized Training with Decentralized Execution}, where the agent may utilize additional data during training which it cannot access at inference time \cite{foersterDeepMultiAgentReinforcement}.
+
+
+\subsection{Monte Carlo Tree Search}\label{ssec:mcts}
+\gls{mcts} is a decision-time planning algorithm which uses multiple sampled trajectories to approximate an action-value function \cite{suttonReinforcementLearningIntroduction2018}. At each step, simulations are run until a computational budget is exhausted, building a tree rooted at the current state. The simulation statistics accumulated at the root node are then used to make a final decision. As a model-based method it relies on knowledge of the environment's transition dynamics, which are usually known beforehand (e.g. in games like Go) but could also be learned\footnote{An example of an algorithm that learns the transition dynamics is \emph{MuZero} \cite{schrittwieserMasteringAtariGo2020}.} \cite{francois-lavetIntroductionDeepReinforcement2018}. \gls{mcts} exhibits a number of desirable characteristics \cite{browneSurveyMonteCarlo2012}:
+\begin{itemize}
+    \item \textbf{Aheuristic}: While the algorithm's performance can often be increased by including domain-specific knowledge into the search\footnote{In Section~\ref{ssec:eval_baseline} the effect of heuristics on the \gls{mcts} used as baseline for this work is evaluated.}, the base version already works on a wide variety of problems without any modifications.
+    \item \textbf{Anytime}: \gls{mcts} can be terminated at any time during the search and immediately yield up-to-date results.
+    \item \textbf{Asymmetric}: The algorithm's search favors more promising nodes in the search tree, thus providing more accurate results for important regions of the tree.
+\end{itemize}
+The following chapter provides an overview over the \gls{mcts} algorithm, starting with the most popular single-agent variant called \glsfirst{uct}. This algorithm is then extended to be applicable to \glspl{dmdp} with a continuous action space in the subsequent sections. The \gls{mcts} description mostly follows \cite{browneSurveyMonteCarlo2012} using notation adopted from \cite{moerlandA0CAlphaZero2018} and \cite{silverMasteringGameGo2016, silverMasteringGameGo2017} to keep consistency with Chapter~\ref{sec:concept}.
+
+\subsubsection{Upper Confidence Trees}\label{sssec:uct}
+To describe the basics of \gls{mcts}, it makes sense to start with a simple \gls{mdp} first. It is simple in the sense that the action space \actionspace\ is discrete and finite. An additional assumption is that $|\actionspace|$ is "small", where small in this case means that the cardinality of the set \actionspace\ is smaller than the number of \gls{mcts} iterations. While the algorithm is still applicable if this condition is not met, it requires modifications to perform well. One such modification is introduced in Section~\ref{sssec:progressive_widening}.
+
+At each state \state\ of the environment, the \gls{uct} algorithm builds a new tree starting from the current state. As this state constitutes the root of the search tree it is denoted as $s_0$. Each node within the tree stores an environment state \state \footnote{Usually environment states are vectors or matrices and are denoted in bold. To improve readability, the bold font is omitted in the \gls{mcts} section.}. Each edge consists of a state-action pair $(s, a)$ and stores a set of statistics $\{n(s, a), W(s, a), Q(s, a) \}$\footnote{To keep it simple, subscripts for node depth are used only when they are needed for disambiguation.}, where $n(s, a)$ is the \emph{visitation count} and $W(s, a)$ is the cumulative sum of returns for each action. $Q(s, a) = W(s, a)/n(s, a)$ represents the approximated state-action value \cite{moerlandA0CAlphaZero2018}.
+
+The \gls{mcts} algorithm then grows the tree with each simulation run according to the four steps illustrated graphically in Figure~\ref{fig:mcts} and described in the following. The name \glsfirst{uct} comes from applying a selection policy based on upper confidence bounds \cite{kocsisBanditBasedMonteCarlo2006, kocsisImprovedMonteCarloSearch}. Through this, the algorithm is able to find a solution to the exploration-exploitation dilemma.
+
+\begin{enumerate}
+    \item \textbf{Selection}\\
+    A so called \emph{tree policy} $\pi_{tree}$ descends down the tree starting from the root node $s_0$, selecting actions according to the UCB formula
+    \begin{gather}\label{eq:uct_formula}
+        \text{UCT}(a) = \Q + C_{uct} \sqrt{\frac{\log n(s)}{n(s, a)}}
+    \end{gather}
+    until a leaf node is reached. Here $n(s) = \sum_a n(s, a)$ denotes the total visitation count of state $s$ and $C_{uct} > 0$ is a constant controlling the weight of the exploration term. A node is defined to be a leaf node if it is both non-terminal and expandable (i.e. has unvisited actions) \cite{browneSurveyMonteCarlo2012}.
+    Note that the correct exploration-exploitation trade-off is only achieved if \Q\ is properly scaled between $0$ and $1$ to not diminish the exploration term \cite{browneSurveyMonteCarlo2012}.
+    \item \textbf{Expansion}\\
+    Once a leaf node is reached, the tree is expanded by selecting a previously unvisited action $\bar a$, leading to a new leaf state $s_L$. $L$ denotes the depth of node $s_L$ in the tree and indicates that it is a leaf node. This is usually achieved by setting $\text{UCT}(\bar a) = \infty$ for all actions $\bar a$ that have not been visited yet. If there are multiple unexplored actions to choose from, the tie can be broken by selecting an action at random \cite{browneSurveyMonteCarlo2012}.
+    \item \textbf{Simulation}\\
+    Starting from the newly selected node $s_L$, a \emph{simulation policy} $\pi_{simulation}$ is used to perform a Monte Carlo rollout until a predetermined depth or a terminal stage is reached. The simplest possible policy $\pi_{simulation}$ is to select an action uniformly at random from the set of available actions \actionspace. Once the ending conditions are met, the simulation policy halts with a stored trajectory $T$
+    \begin{gather}\label{eq:simulation_trace}
+    T = \big( (s_{L+1}, a_{L+1}, r_{L+1}), \; \ldots, \; (s_{L+D}, a_{L+D}, r_{L+D}) \big)~.
+    \end{gather}
+    The accumulated and discounted rewards $\Delta = \sum_{d=0}^{D-1} \gamma^d r_{L+d+1}$ can now be used as a Monte Carlo estimate of the leaf node's value function $V(s_L)$ \cite{moerlandA0CAlphaZero2018}.
+    \item \textbf{Backup}\\
+    In the last step, the nodes that have been visited on the descent down the tree must be updated with the estimated value of the new node. Given the trace
+    \begin{gather}\label{eq:backup_trace}
+    T = \big( (s_{0}, a_{0}, r_{0}), \; \ldots, \; (s_{L-1}, a_{L-1}, r_{L-1}) \big)
+    \end{gather}
+    within the tree, the total action values of the trace can be computed recursively as
+    \begin{gather}\label{eq:mcts_trace}
+    R(s_d, a_d) = r(s_d, a_d) + \gamma R(s_{d+1}, a_{d+1}), \quad 0 \leq d < L~.
+    \end{gather}
+    The recursion is initialized with the Monte Carlo value estimate of the expanded node $R(s_L, a_L) = \Delta = V(s_L)$. Now the cumulative sum of returns for all actions visited during the iteration is updated for each edge $(s_d, a_d)$ with $W(s_d, a_d) \leftarrow W(s_d, a_d) + R(s_d, a_d)$. The corresponding visitation counts are incremented with $n(s_d, a_d) \leftarrow n(s_d, a_d) + 1$. Finally, the update can be completed by re-computing the approximate state-action values $Q(s_d, a_d) = W(s_d, a_d)/n(s_d, a_d)$. This backup step is then recursively applied to all nodes up the tree until the root node $s_0$ is reached \cite{browneSurveyMonteCarlo2012, moerlandA0CAlphaZero2018}.
+\end{enumerate}
+\input{tikzplots/mcts}
+Once a fixed number of iterations $N$ is completed, the algorithm terminates with a tree of exactly $N$ nodes, since with each iteration one leaf node $s_L$ has been added. The root node now holds the visitation counts for each available action $n(s, a), \, \forall \action$ together with their action-value estimates \Q. There are multiple criteria for selecting the action to be executed within the environment, among which two are commonly used \cite{browneSurveyMonteCarlo2012}:
+\begin{enumerate}
+    \item $a_{\text{final}} = \max_a \, Q(s_0, a)$: selection of the action with the highest action-value estimate.
+    \item $a_{\text{final}} = \max_a \, n(s_0, a)$: selection of the action that has been visited the most.
+\end{enumerate}
+While the first selection rule seems intuitive at first, it suffers from the high variance of \Q\ estimates for actions with low visitation counts. A more common choice is therefore the selection of $\max_a \, n(s_0, a)$ since the visitation counts are more robust to outliers. Usually though both rules are tried and the decision is made based on empirical performance in the application domain.
+
+The plain \gls{uct} algorithm described above can neither select actions for multiple agents nor can it deal with continuous action spaces. Since the goal of this thesis is to plan cooperative driving trajectories, it must be extended to function in such settings. These necessary extensions are the topic of the next two sections.
+
+\subsubsection{Monte Carlo Tree Search in Continuous Action Spaces}\label{sssec:progressive_widening}
+\gls{uct} as discussed so far cannot handle continuous action spaces. To see why, it is worth remembering that any interval on the real line contains infinitely many numbers. Therefore $|\actionspace| = \infty$ and the \gls{mcts} never stops exploring actions at the root node, growing a tree without any depth. A technique that deals with this dilemma and allows for exploitation in continuous action spaces is called \emph{Progressive Widening} \cite{couetouxContinuousUpperConfidence2011}. It proceeds as follows: Each time the tree policy visits a node in the tree (including the root node), the criterion in Equation~\ref{eq:pw_formula} is evaluated and the number of available actions $m(s)$ is determined \cite{moerlandA0CAlphaZero2018}.
+\begin{gather}\label{eq:pw_formula}
+    m(s) = C_{pw} \cdot n(s)^{\alpha_{pw}}~.
+\end{gather}
+Here $C_{pw} > 0$ and $\alpha_{pw} \in [0, 1]$  are constants and control whether a flat tree (exploration) or a deep tree (exploitation) is built \cite{couetouxContinuousUpperConfidence2011}. If the number of already chosen actions $|A^s|$ in state $s$ is smaller than $m(s)$, the conditions for progressive widening are met. Then one or more new actions are sampled from the action space and added as edges. Through this procedure, the tree slowly grows larger in areas that are visited more often, gradually filling out the interval on which the continuous action space is defined \cite{couetouxContinuousUpperConfidence2011}. The most basic strategy for sampling new actions is uniform sampling. More sophisticated approaches are however also possible as will be explored in this thesis (see Section~\ref{ssec:guided_search}).
+
+\subsubsection{Monte Carlo Tree Search in Multi-Agent Settings}\label{sssec:decoupled_uct}
+\gls{uct} with progressive widening as introduced in the previous section has the ability to deal with continuous action spaces. It is however not applicable to \glspl{dmdp} out of the box. In the following, an extension to \gls{uct} called \gls{duct} is described which has been shown to work well empirically in settings with multiple agents \cite{takMonteCarloTree2014, lanctotMonteCarloTree}.
+
+The core idea behind \gls{duct} is that each agent $i \in\agentset$ maintains its own set of statistics $\{n_i(s, a), W_i(s, a), Q_i(s, a) \}$. All rewards and visitation counts are treated as if there were no dependency between them which is called \emph{decoupling}. As a result, each agent retains its own tree policy $\pi_{tree, i}$ by independent application of Formula~\ref{eq:uct_formula}.
+
+During the selection phase, iterative action selection for all agents without knowledge of each other's choices generates a joint action $\mathbf a \in \times \actionspace_i$ \cite{takMonteCarloTree2014}. Since the \gls{uct} value of an unexplored action is infinite, it is ensured that each agent tries each action at least once. This does not mean however that all combinations of all actions are selected at least once. As a consequence, the full joint action space $\times \actionspace_i$ is not completely explored \cite{takMonteCarloTree2014}. If the joint action $\mathbf a$ has already been chosen previously, the search progresses to the corresponding node and recursively applies the selection policy again.
+
+If at least one agent chooses an unexplored action or the combination of independent best actions $a_i$ has not been selected yet, the search tree is expanded and a leaf node is added. Compared to Section~\ref{sssec:uct}, the edge leading to the new node now comprises a joint action and a joint state $(\mathbf s, \mathbf a)$, where the joint state $\mathbf s$ is the concatenation of the individual agents' states.
+
+In the simulation phase, each agent now has its own rollout policy $\pi_{simulation, i}$ to sample actions from (analogous to the plain \gls{uct} algorithm). Together they form a joint action for all agents and allow performing Monte Carlo estimates of the leaf node in a multi-agent setting. Similarly to the single-agent case, uniform random sampling for each agent is a natural choice as rollout policy. The simulation  results in a reward vector $\pmb \Delta = (\Delta_1, \ldots, \Delta_{|\Upsilon|})$ that has to be backed up through the tree. Since all actions chosen during the selection phase have been joint actions, each agent increments its own, independently stored values and visitation counts and updates its action-value estimates $Q_i(s, a)$ \cite{takMonteCarloTree2014}.
+
+In the last step, each agent individually selects the action with the highest $Q_i(s, a)$, forming a joint action that is then executed in the environment. To what does the algorithm described above converge? This can be analyzed using tools from game theory, where each step of the \gls{dmdp} can be seen as a simultaneous move game. The solution to such a game is called a Nash equilibrium, which is defined by mutual best responses. This means that no player has a reason to switch strategies given the other player's strategy. The \gls{duct} algorithm does not converge to such an optimum \cite{takMonteCarloTree2014}. However, its strong empirical performance compared to other approximate solution methods still makes it a good choice for a \gls{dmdp} \cite{takMonteCarloTree2014, lanctotMonteCarloTree}.
+
+The extension of \gls{duct} to continuous action spaces is straightforward: As each agent has its own tree policy $\pi_{tree, i}$, it is able to evaluate criterion~\ref{eq:pw_formula} on its own and decide whether a new action needs to be sampled or not. Consequently, the number of actions chosen may be different for each agent in each node of the tree. While this poses no problem for the \gls{duct} algorithm, it makes training a network to guide the search more challenging, as will be discussed in Section~\ref{sssec:multi_agent_objective}.
+
+
+\glsresetall
+\subsection{Neural Networks}\label{ssec:nns}
+In simple \gls{rl} environments, it is often possible to store the value function or \Q\ in a table and compute the optimal policy. Most interesting applications however have either large state spaces (e.g. images) or large action spaces, for instance in continuous control. In these settings, an optimal policy or optimal value function can only be approximated.
+
+One commonly used technique for function approximation --- originally intended for supervised learning --- are neural networks, which are the topic of this chapter. The first section introduces artificial neurons and how they can be combined to construct more expressive, \emph{deep} models. Then \glspl{cnn} are briefly explained as they form the backbone of most current advances in image processing. Next, an attention mechanism is introduced which allows a neural network to learn interactions between elements of a sequence. The last section discusses a class of models that can represent an arbitrary conditional probability distribution called \glspl{gmm}.
+
+\subsubsection{Deep Learning}\label{sssec:deep_learning}
+The basic model of an artificial neuron has been introduced in 1958 as the "Perceptron" and has not changed much since then \cite{rosenblattPerceptronProbabilisticModel1958}. 
+\input{tikzplots/perceptron}
+Figure~\ref{fig:perceptron} depicts its structure. The goal of such a model is to approximate some function $y = f^*(\mathbf x)$, for instance in a regression problem \cite{goodfellowDeepLearning2016}. Inputs are fed into the neuron and weighted by a corresponding weight, hence the term "\emph{feedforward network}" for networks composed of such neurons. Then the weighted inputs are summed together with a bias term and transformed by a nonlinear activation function. Mathematically, the process can be described through Equation~\ref{eq:perceptron} \cite{goodfellowDeepLearning2016}
+\begin{gather}\label{eq:perceptron}
+    h = g (\mathbf w^T \mathbf x + b) = \sum_{a=0}^A w_a x_a + b~,
+\end{gather}
+where the inner function $\mathbf w^T \mathbf x + b$ defines an affine-linear transformation controlled by a weight vector $\mathbf w$ and a scalar bias term $b$. $g$ denotes the activation function. Some important options for $g$ are introduced in later paragraphs of this section.
+
+The simple model outlined above cannot learn complex relationships between inputs and outputs. A common example is the XOR function or "exclusive or" \cite{goodfellowDeepLearning2016}. To be able to solve these kinds of problems, compositions of different functions are needed such that $y = f^D ( \ldots f^2 ( f^1(\mathbf x) ) )$. Here $D$ specifies the depth of the network. Such a composition of neurons is called \gls{mlp}. A single layer can be represented by Equation~\ref{eq:mlp}:
+\begin{gather}\label{eq:mlp}
+    \mathbf h = g  (\mathbf W^T \mathbf x + \mathbf b)~.
+\end{gather}
+It uses a weight matrix $\mathbf W$ and a bias vector $\mathbf b$ to produce a vector-valued output $\mathbf h$. The activation function $g$ is now applied element-wise. Figure~\ref{fig:mlp} depicts a possible network topology for an \gls{mlp} with one hidden layer.
+\input{tikzplots/network}
+
+Now that the basic concepts of deep learning have been introduced, the choice of an activation function can be discussed. Clearly it must be a nonlinear function, because if $g$ is chosen to be linear, the whole network collapses into a linear model \cite{goodfellowDeepLearning2016}. What activation function should be used then? One commonly used function is called the \emph{sigmoid function} and defined as
+\begin{gather}\label{eq:sigmoid}
+    \sigma (x) = \frac{1}{1+e^{-x}}~.
+\end{gather}
+However, it has multiple drawbacks. First, the exponential in the denominator is expensive to compute. While this is not an issue for small neural networks it can quickly add up to a noticeable performance overhead in large models with billions of neurons. Second, for large positive or negative values of $x$ the gradient converges towards $0$, making training difficult \cite{goodfellowDeepLearning2016}.
+
+An alternative that fixes the first problem of the sigmoid and partially addresses its second shortcoming is the \gls{relu} \cite{goodfellowDeepLearning2016}. It is simple to compute mathematically and can be expressed as
+\begin{gather}\label{eq:relu}
+    \relu(x) = \max (0, x)~.
+\end{gather}
+It is a linear function for positive input $x$ and $0$ else. While it is easy to compute, it is still nonlinear and allows the network to function \cite{goodfellowDeepLearning2016}.
+
+The last import activation function that needs to be discussed is the $\softmax$. It is commonly used as an output function for classification problems since it can produce a valid probability distribution over output classes. The probability for class $i$ is defined as the exponential $e^{x_i}$ of the activation $x_i$, which is then normalized by the sum of exponentiated activations over all classes $k = 1, \ldots, K$ \cite{goodfellowDeepLearning2016}.
+\begin{gather}\label{eq:softmax}
+    \softmax (x_i) = \frac{e^{x_i}}{\sum_{k=1}^K e^{x_k}}~.
+\end{gather}
+\glspl{mlp} are a good choice for processing a wide array of numerical inputs. They do however lack the inductive biases needed to succeed in domains where the data has a certain structure like images or time series. A very common architecture with such a bias are \glspl{cnn} \cite{lecunBackpropagationAppliedHandwritten1989}. Since they are particularly successful at processing images and the concept described in this work relies on visual input, they are introduced next.
+
+\subsubsection{Convolutional Neural Networks}\label{sssec:cnns}
+\glspl{cnn} \cite{lecunBackpropagationAppliedHandwritten1989} are a widely-used architecture of neural network for all kinds of tasks but excel at processing visual input. In image classification, they have been responsible for arguably the biggest breakthrough in modern machine learning \cite{krizhevskyImageNetClassificationDeep2017} by introducing three key concepts into the architecture \cite{goodfellowDeepLearning2016}:
+\begin{enumerate}
+    \item \textbf{Sparsity}. In an \gls{mlp}, every input unit is connected to every output unit. Interactions in convolutional layers are limited to local neurons.
+    \item \textbf{Parameter sharing}. The localized interactions of a \gls{cnn} share weights within a layer.
+    \item \textbf{Equivariance to translation}. If a pattern in an image is moved to another location, its feature map will be moved by the same amount. 
+\end{enumerate}
+Properties one and two result in large efficiency gains as a convolutional layer only has to store a fraction of the weights compared to an \gls{mlp} \cite{goodfellowDeepLearning2016}. Property three is desirable for image processing since detecting an edge should succeed irrelevant of its place within the image.
+
+Using notation from the Squeeze-and-Excitation authors \cite{huSqueezeandExcitationNetworks2019} , a convolutional layer transforms an input $\mathbf X \in \mathbb R^{C^\prime \times H^\prime \times W^\prime}$ to a feature map $\mathbf U \in \mathbb R^{C \times H \times W}$ using a set of $C$ filter weights $\mathbf V = [\mathbf v_1, \ldots, \mathbf v_C]$. The transformation can be written mathematically (without bias terms) as 
+\begin{gather}\label{eq:convolution}
+    \mathbf u_c  = \mathbf v_c * \mathbf X = \sum_{s=1}^{C^\prime} \mathbf v_c^s * \mathbf x^s~,
+\end{gather}
+where $*$ denotes the convolution operation. In Equation~\ref{eq:convolution}, a single output feature map $\mathbf u_c \in R^{H \times W}$ for channel $c$ is constructed by applying the corresponding filter $\mathbf v_c = [\mathbf v^1_c, \ldots, \mathbf v^{C^\prime}_c]$ to each channel of the input $\mathbf X = [\mathbf x^1, \ldots, \mathbf x^{C^\prime}]$ \cite{huSqueezeandExcitationNetworks2019}. Note that the filter $\mathbf v_c$ for a single output channel $\mathbf u_c$ has a set of weights for each channel $1, \ldots, C^\prime$ of the input image. These weights are shared for all local interactions however, indicated by the constant subscript $_c$. 
+\input{tikzplots/convolution}
+One such interaction is visualized in Figure~\ref{fig:convolution}, where a filter processes local input values to produce a single value in the output feature map.
+
+\glspl{cnn} model channel dependencies implicitly through the convolutional filter being applied to all input channels \cite{huSqueezeandExcitationNetworks2019}. Since the filter only captures local dependencies, the learned features lack global context. Squeeze-and-Excitation networks \cite{huSqueezeandExcitationNetworks2019} have popularized the concept of \emph{channel attention}\footnote{The more general concept of neural attention is introduced in the next section.}, which is a mechanism that explicitly allows the network to learn channel dependencies. More recently, ECA-Net has been proposed and includes a simplified and more efficient method to add global channel context to the learning \cite{wangECANetEfficientChannel2020}. It describes a two-step mechanism, where in the first step channel statistics are aggregated via $2D$ global average pooling:
+\begin{gather}\label{eq:avg_pool}
+    z_c = \frac{1}{H \times W} \sum_{h=1}^H \sum_{w=1}^W u_c(h, w)~.
+\end{gather}
+The channel statistic $z_c$ can be interpreted as a summary representation of the local features in channel $c$. Performing global pooling over all channels of the feature map $\mathbf U$ results in a vector $\mathbf z \in \mathbb R^C$ containing the aggregated representations.
+
+To learn interactions between the channel statistics $z_c$, one could now employ a fully connected neural network \cite{huSqueezeandExcitationNetworks2019}. As has been discussed in this section however, convolutional layers are computationally more efficient. In ECA-Net, the channel dependencies are therefore learned using a $1D$ convolution with kernel size $k$:
+\begin{gather}\label{eq:eca}
+    \mathbf s = \sigma(\text{C1D}_k(\mathbf z_c))~.
+\end{gather}
+The $1D$ convolution is denoted as $\text{C1D}$ while $\sigma$ indicates the sigmoid activation function. The resulting feature vector $\mathbf s$ is now a representation of local channel interactions scaled between zero and one. It can be used to obtain a recalibrated output feature map $\tilde{\mathbf{X}}$
+\begin{gather}\label{eq:eca_output}
+    \tilde{\mathbf{x}}_c = s_c \mathbf u_c
+\end{gather}
+by scaling each channel of the output feature map $\mathbf u_c$ with the corresponding channel activation weight $s_c$ obtained from the vector $\mathbf s$.
+
+The last question remaining now is how the kernel size $k$ of the ECA-module is determined. The authors give a formula to automatically set the kernel size defined in Equation~\ref{eq:eca_kernel_size}
+\begin{gather}\label{eq:eca_kernel_size}
+    k = \phi (C) = \bigg| \frac{\log_2 (C)}{\gamma} + \frac{b}{\gamma} \bigg|_{odd}~, 
+\end{gather}
+where $C$ is the channel dimension and $| \cdot |_{odd}$ indicates the nearest odd number. $\gamma = 2$ and $b=1$ are constants given by the authors. The formula is derived in Appendix~\ref{app:eca_automatic_formula}.
+
+Channel-attention is a successful mechanism for modeling global context in \glspl{cnn}. It is however limited to applications in computer vision. To learn interactions between arbitrary sequences of inputs, a more general model of neural attention is needed. The \emph{self-attention} mechanism described in the next section introduces one such concept.
+
+
+\subsubsection{Attention and Self-Attention}\label{sssec:attention}
+Neural attention architectures originate from natural language processing, where they have been proposed to solve the alignment problem in machine translation \cite{bahdanauNeuralMachineTranslation2016}. The attention mechanism in Sequence-to-Sequence models can be seen as a scoring function: It learns relative weights for each element of an input sequence used to decode a specific output element. As established in Section~\ref{sssec:deep_learning}, such a function can be parameterized by a neural network. By conditioning on all elements of the input sequence with learned weights, the network is able to model long-range dependencies between the elements.
+
+The Transformer proposed in \cite{vaswaniAttentionAllYou2017} goes one step further and removes the recurrent encoder and decoder in Sequence-to-Sequence, solely relying on attention. The resulting architecture is able to learn complex dependencies between sequence elements in parallel. While the model was designed to learn interactions between word tokens in sentences, it has since then been applied to image data \cite{dosovitskiyIMAGEWORTH16X162021a}, pedestrian trajectory prediction \cite{everettCollisionAvoidancePedestrianRich2020} as well as \gls{rl} \cite{wrightNeuralAttentionalArchitecturesDeep}. This section introduces the basics of multi-head attention before it is applied to learn agent interactions in Chapter~\ref{ssec:network_architecture}.
+
+Multi-head attention is computed from three matrices: the queries $\mathbf Q$, the keys $\mathbf K$ and the values $\mathbf V$. Given the dimensionality of the queries and keys $d_k$, it can be described mathematically as
+\begin{gather}\label{eq:scaled_dot_product_attention}
+    \attention(\mathbf Q, \mathbf K, \mathbf V) = \softmax \Big( \frac{\mathbf Q \mathbf K^T}{\sqrt{d_k}}  \Big) \mathbf V~.
+\end{gather}
+Where do queries, keys and values come from? They are all computed from the same input sequence $(x_1, \ldots, x_N)$ and the representations generated from that input sequence $\mathbf Z = (\mathbf z_1, \ldots, \mathbf z_N)$\footnote{In natural language processing, the input sequence is a sentence and the generated representation $\mathbf z$ are the embedded words.} \cite{vaswaniAttentionAllYou2017}. The concatenated representation $\mathbf Z$ of the input sequence is an $N \times d_{model}$ matrix. $\mathbf Q, \mathbf K$ and $\mathbf V$ can now be obtained by multiplying $\mathbf Z$ with three distinct weight matrices $\mathbf W^Q, \mathbf W^K \in \mathbb R^{d_{model} \times d_k}$ and $\mathbf W^V \in \mathbb R^{d_{model} \times d_v}$. The resulting products are given below \cite{vaswaniAttentionAllYou2017}:
+\begin{align}
+    \mathbf Z \mathbf W^Q & = \mathbf Q \in \mathbb R^{N \times d_k} \\
+    \mathbf Z \mathbf W^K & = \mathbf K \in \mathbb R^{N \times d_k} \\
+    \mathbf Z \mathbf W^V & = \mathbf V \in \mathbb R^{N \times d_v}~.
+\end{align}
+In the original model as well as this work, $d_k = d_v$ for simplicity. The matrix product $\mathbf Q \mathbf K^T$ now produces an $N \times N$ matrix, where each row contains unnormalized attention scores. After applying the $\softmax$ function row-wise, multiplication with the values matrix $\mathbf V$ results in a representation $\attention (\mathbf Q, \mathbf K, \mathbf V) \in \mathbb R^{N \times d_v}$. Each row of the self-attention representation is a convex combination of the rows of $\mathbf V$, where the summation weights are determined by the corresponding row of $\softmax ( \frac{\mathbf Q \mathbf K^T}{\sqrt{d_k}} )$\footnote{A blog post illustrating the row perspective of matrix multiplication instead of the commonly used dot-product perspective can be found at \href{https://ghenshaw-work.medium.com/3-ways-to-understand-matrix-multiplication-fe8a007d7b26}{https://ghenshaw-work.medium.com/3-ways-to-understand-matrix-multiplication-fe8a007d7b26}.}. To give an example: The second row of $\attention (\mathbf Q, \mathbf K, \mathbf V)$ is computed as linear combination of all the rows of $\mathbf V$, where the weights for the linear combination are given by the second row of $\softmax ( \frac{\mathbf Q \mathbf K^T}{\sqrt{d_k}} )$. The term $\sqrt{d_k}$ increases numerical stability by preventing the dot-product inside the $\softmax$ from growing too large. Summing up: The self-attention mechanism computes a representation $\attention (\mathbf Q, \mathbf K, \mathbf V)$, which is a weighted sum of a projected input representation $\mathbf Z \mathbf W^V = \mathbf V$. Since the weights are computed from the same input sequence (using different projections $\mathbf Q$ and $\mathbf K$), the whole architecture is called \emph{self-attention}. 
+\input{tikzplots/self_attention}
+Figure~\ref{fig:self_attention} visualizes the process as computational graph\footnote{Several visual guides can be recommended. The "Illustrated Transformer" (\href{https://jalammar.github.io/illustrated-transformer}{https://jalammar.github.io/illustrated-transformer}) and "Transformers from scratch" (\href{http://peterbloem.nl/blog/transformers}{http://peterbloem.nl/blog/transformers}) are particularly worth mentioning.}.
+
+The last important component of the Transformer model is the concept of \emph{multi-head attention}. It is defined in the original work through Equation~\ref{eq:multi_head_attention} \cite{vaswaniAttentionAllYou2017}:
+\begin{align}\label{eq:multi_head_attention}
+    \multihead (\mathbf Q, \mathbf K, \mathbf V) & = \concat (\head_1, \ldots, \head_H) \mathbf W^O \\
+    \text{where} \; \head_h & = \attention (\mathbf Z \mathbf W^Q_h , \, \mathbf Z \mathbf W^K_h, \, \mathbf Z \mathbf W^V_h)~. \nonumber
+\end{align}
+The second line in the formula immediately elucidates the core idea of multi-head attention: Instead of using just one matrix $\mathbf Q, \mathbf K$ and $\mathbf V$ for each self-attention layer of the model, $H$ different such matrices are used in parallel. This allows the Transformer to attend to different projection subspaces \cite{vaswaniAttentionAllYou2017}. Apart from producing higher quality representations, multiple heads also increase computational efficiency by using $d_k = d_v < d_{model}$. This reduces the memory needed for the weight matrices $\mathbf W^Q_h$, $\mathbf W^K_h$ and $ \mathbf W^V_h$. For example, the values are now computed on $d_v$ columns of the input representation $\mathbf Z \mathbf W^V_{:, :d_v} = \mathbf V$. The notation $:, :d_v$ is borrowed from array indexing in Python and denotes selecting all rows and the first $d_v$ columns. Thus the queries, keys and values for each head all focus on different parts of the input representation $\mathbf Z$ \cite{vaswaniAttentionAllYou2017}. The only requirement imposed by splitting up the weights for each head like this is that $d_{model}$ must be divisible by $H$ to produce valid dimensions for $d_v$ and $d_k$ \cite{vaswaniAttentionAllYou2017}.
+
+Once attention is computed for each head in Equation~\ref{eq:multi_head_attention}, the resulting representations $\head_h$ are concatenated and multiplied by a weight matrix $\mathbf W^O$. This enables learning interactions between the outputs of each head before $\multihead (\mathbf Q, \mathbf K, \mathbf V)$ is fed as input into the next layer of the Transformer. After $N$ layers of self-attention, the output is used to decode a target representation in the original model \cite{vaswaniAttentionAllYou2017}.
+
+
+
+
+\subsubsection{Gaussian Mixture Models}\label{sssec:mixtures}
+While the normal distribution is the most common probability distribution, it has one drawback: It is unimodal. This severely limits its capabilities when modeling multimodal data. One solution to this problem is to mix multiple normal distributions in a superposition \cite{bishopPatternRecognitionMachine2006}. The resulting \emph{mixture distribution} is a linear combination of normal distributions with the desirable property of being able to approximate arbitrary probability distributions \cite{bishopMixtureDensityNetworks1994}.
+
+Coming back to the case of \gls{rl}, it can often be advantageous to have a stochastic policy \piplain\ with multiple modes. Consider for instance the case in which a vehicle is positioned directly in front of an obstacle (see Figure~\ref{fig:agent_view_maze} for example): It can avoid the obstacle to the left or to the right, which would ideally be modeled by a multimodal distribution.
+\begin{figure}[t]
+	\centering
+	\captionsetup{justification=centering}
+	\scalebox{0.6}{
+    \input{images/agent_view_maze.pdf_tex}
+    }
+	\caption[Agent view maze]{View of the agent facing an obstacle. Ideally, the agent would learn that evading the obstacle is possible on both sides through a multimodal distribution.}
+\label{fig:agent_view_maze}
+\end{figure}
+While a categorical distribution in discrete action spaces is inherently able to do so, a normally distributed policy would have to choose either side. This example provides the motivation for an introduction of \glspl{gmm} in the following section, which are able to represent multimodal stochastic policies in continuous control settings.
+
+Mathematically, a mixture of normal distributions is defined by the linear combination in Equation~\ref{eq:basic_mixture} \cite{bishopPatternRecognitionMachine2006}:
+\begin{gather}\label{eq:basic_mixture}
+    p(\mathbf a) = \sum_{k=1}^K \alpha_k \normal{\mathbf a | \pmb \mu_k, \, \pmb \Sigma_k}~.
+\end{gather}
+Here the mixture coefficients $\alpha_k$ are scalar weights for the individual Gaussians making up the mixture. Each normal density $\normal{\mathbf a | \pmb \mu_k, \, \pmb \Sigma_k}$ is called a component and has its own parameters. $\pmb \mu_k$ is the mean vector of the distribution and $\pmb \Sigma_k$ is the covariance matrix. The covariance matrix must be symmetric and positive semidefinite to specify a defined normal distribution. To form a valid mixture model, the coefficients have to be non-negative and must sum to one as stated in conditions~\ref{eq:gmm_coeff_conditions} \cite{bishopPatternRecognitionMachine2006}:
+\begin{gather}\label{eq:gmm_coeff_conditions}
+    \sum_{k=1}^K \alpha_k = 1, \quad \alpha_k \geq 0~.
+\end{gather}
+
+A \gls{gmm} is a mixture model where the coefficients $\alpha_k (\mathbf s)$ and the component parameters $\pmb \mu_k (\mathbf s)$ and $\pmb \Sigma_k (\mathbf s)$ are the output of a neural network given an input $\mathbf s$. It is thus a conditional probability distribution given $\mathbf s$ \cite{bishopMixtureDensityNetworks1994}. Note how with the right notation, the left-hand side of Equation~\ref{eq:gaussian_mixture_model} looks similar to the notation used for a policy \p. Indeed, a \gls{gmm} is able to parameterize a stochastic policy.
+\begin{gather}\label{eq:gaussian_mixture_model}
+    p(\mathbf a | \mathbf s) = \sum_{k=1}^K \alpha_k (\mathbf s) \normal{\mathbf a | \pmb \mu_k (\mathbf s), \, \pmb \Sigma_k (\mathbf s)}~.
+\end{gather}
+How does a neural network learn outputs that conform to the restrictions imposed by a \gls{gmm}? A closer look at the requirements for the mixing coefficients $\alpha_k (\mathbf s)$ in Equation~\ref{eq:gmm_coeff_conditions} reveals that they are the same as for a probability distribution. It is thus possible to learn $\alpha_k (\mathbf s)$ by a network with $k$ output neurons over which the $\softmax$ activation function from Definition~\ref{eq:softmax} is applied \cite{bishopPatternRecognitionMachine2006}.
+
+Learning the covariance matrix $\pmb \Sigma_k (\mathbf s)$ is usually done with a trick to improve numerical stability. It has two steps: First the $\log$ standard deviation is learned by the network. This learned value is then exponentiated to produce the real standard deviation value. Through learning the $\log$ standard deviation, the neural network can output both positive and negative values, increasing numerical stability. The following exponentiation returns a value greater than zero, making it a valid choice as standard deviation \cite{schulmanTrustRegionPolicy2017}.
+
+The generation of observations from a \gls{gmm} follows a two-step procedure:
+\begin{enumerate}
+    \item An index $k$ is drawn from $1, \ldots, K$. The probability of choosing index $k$ is determined by the corresponding mixing coefficient $\alpha_k (\mathbf s)$.
+    \item An observation is sampled from the $k$-th mixture component. It is parameterized by the mean vector $\pmb \mu_k (\mathbf s)$ and the standard deviation $\pmb \Sigma_k (\mathbf s)$.
+\end{enumerate}
