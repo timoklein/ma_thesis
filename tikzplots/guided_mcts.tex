@@ -45,7 +45,7 @@
 \node (tree3_node4) [node, below left=0.5cm and 0.3cm of tree3_node1]{};
 \node (tree3_node5) [node, below right=0.5cm and 0.3cm of tree3_node1]{};
 \node (tree3_node6) [node, below left=0.5cm and 0.3cm of tree3_node5]{};
-\node (tree3_expandednode) [below right=0.5cm and 0.3cm of tree3_node5]{\Large $\pmb f_\theta$};
+\node (tree3_expandednode) [below right=0.5cm and 0.3cm of tree3_node5]{\Large $\bm f_\theta$};
 
 
 % Simulation Tree lines
@@ -78,7 +78,7 @@
 %-----------------------------------------------------------------------------
 % Labels
 \node (tree_policy) [below right=3.5cm and 2cm of root_1] {\LARGE $\pi_{\text{tree}}$};
-\node (params) [below=3.2cm of root_3]{\Large $f_\theta (\mathbf s) = \big( \pmb \mu, \, \pmb \sigma, \hat V \big)$};
+\node (params) [below=3.2cm of root_3]{\Large $f_\theta (\mathbf s) = \big( \bm \mu, \, \bm \sigma, \hat V \big)$};
 
 \node (selection) [above=1.1cm of root_1] {\large \textbf{Selection}};
 \node (expansion) [above=1cm of root_2] {\large \textbf{Expansion}};
@@ -88,5 +88,5 @@
 \node[draw=red, very thick, rounded corners, fit=(evaluation) (tree3_node4) (tree3_node3) (params)] {};
 
 \end{tikzpicture}
-\caption[Guided Monte Carlo tree search]{Iteration of the guided \gls{mcts}. The algorithm behaves like regular \gls{uct} (see Section~\ref{sssec:uct}) until the evaluation phase. Instead of a simulation, a network evaluation $f_\theta (\mathbf s)$ of the expanded node is performed. A Value estimate $\hat V$ and distribution parameters $(\pmb \mu, \, \pmb \sigma)$ are added to the node before the backup phase proceeds unmodified.}\label{fig:guided_mcts}
+\caption[Guided Monte Carlo tree search]{Iteration of the guided \gls{mcts}. The algorithm behaves like regular \gls{uct} (see Section~\ref{sssec:uct}) until the evaluation phase. Instead of a simulation, a network evaluation $f_\theta (\mathbf s)$ of the expanded node is performed. A Value estimate $\hat V$ and distribution parameters $(\bm \mu, \, \bm \sigma)$ are added to the node before the backup phase proceeds unmodified.}\label{fig:guided_mcts}
 \end{figure}

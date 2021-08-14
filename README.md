@@ -8,3 +8,18 @@ This repository contains the LaTeX code together with all plots and files to gen
 
 ## Where is the code?
 The project into which my thesis is embedded is unfortunately not open sourced yet. This is however planned. Once the project is on GitHub I will provide a link to it in this section.
+
+## Examples
+Below are some example plots.
+
+### Guided Monte Carlo tree search
+<img src="examples/guided_mcts.png" width="800" height="400" />
+
+### Network architecture
+<img src="examples/network_architecture.png" width="600" height="600" />
+
+### Pruned sample space examples
+<img src="examples/sample_space_pruning.png" width="600" height="600" />
+
+### Generalization results
+<img src="examples/generalization_results.png" width="800" height="400" />

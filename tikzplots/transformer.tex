@@ -95,8 +95,8 @@
 \draw[line width=0.046875cm, fill=ff_color, rounded corners=0.100000cm] (0.000000, 10.08) -- (2.500000, 10.08) -- (2.500000, 9.18) -- (0.000000, 9.18) -- cycle;
 \node[text width=2.500000cm, align=center] at (1.250000, 9.68) {\footnotesize Policy \vspace{-0.3cm} \linebreak Network};
 
-\node[text width=2.500000cm, align=center] at (0.312500, 11.580000) {$\pmb \mu$};
-\node[text width=2.500000cm, align=center] at (1.250000, 11.580000) {$\pmb \sigma$};
+\node[text width=2.500000cm, align=center] at (0.312500, 11.580000) {$\bm \mu$};
+\node[text width=2.500000cm, align=center] at (1.250000, 11.580000) {$\bm \sigma$};
 \node[text width=2.500000cm, align=center] at (2.187500, 11.580000) {$ \hat V$};
 
 \draw[-latex, line width=0.046875cm, rounded corners=0.200000cm] (1.250000, 10.730000) -- (0.312500, 10.730000) -- (0.312500, 11.33);
@@ -107,5 +107,5 @@
 \draw[line width=0.046875cm, -latex] (4, 9.68) -- (2.5, 9.68);
 
 \end{tikzpicture}
-\caption[Multi-agent Transformer]{The Transformer model used in this thesis. On the right side, an ECA-ResNet processes visual input maps and outputs a vector representation. On the left side, the states of all agents $\Upsilon$ relative to the ego-agent are embedded and then fed into a Transformer encoder. The resulting $|\Upsilon|$ vectors are concatenated with the output of the convolutional pipeline. A parameter-shared \gls{mlp} policy decodes the concatenated representations, producing a distribution $(\pmb \mu, \pmb \sigma)$ and a value estimate $\hat V$ for each agent.}\label{fig:transformer}
+\caption[Multi-agent Transformer]{The Transformer model used in this thesis. On the right side, an ECA-ResNet processes visual input maps and outputs a vector representation. On the left side, the states of all agents $\Upsilon$ relative to the ego-agent are embedded and then fed into a Transformer encoder. The resulting $|\Upsilon|$ vectors are concatenated with the output of the convolutional pipeline. A parameter-shared \gls{mlp} policy decodes the concatenated representations, producing a distribution $(\bm \mu, \bm \sigma)$ and a value estimate $\hat V$ for each agent.}\label{fig:transformer}
 \end{figure}
